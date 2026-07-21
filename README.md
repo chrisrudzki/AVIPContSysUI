@@ -14,7 +14,4 @@ for mac, windows, linux
 
 npx electron-builder -mwl# AVIPContSysUI
 # AVIPContSysUI
-# AVIPContSysUI
-# AVIPContSysUI
-# AVIPContSysUI
-# AVIPContSysUI
+

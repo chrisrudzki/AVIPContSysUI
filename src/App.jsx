@@ -8,7 +8,7 @@ import AvipChart from './AvipChart.jsx'
 
 import './App.css'
 
-#change
+//#change
 
 function App() {
   // const [ex_Temp, setExTemp] = useState(0)
@@ -39,10 +39,11 @@ function App() {
     vipPressure: [],
     pumpPower: [],
     totalPower: [],
-    rPiPower: [],       // add this
-    pumpVoltage: [],    // add this
-    rPiVoltage: [],     // add this
-    power: [] // 0/1 pump-on indicator, used to shade the chart
+    rPiPower: [],      
+    pumpVoltage: [],  
+    rPiVoltage: [],  
+    power: [], // 0/1 pump-on indicator, used to shade the chart
+    new_pump_power_data: [] 
   })
 
   // ------------------------------------------------------------------
@@ -85,15 +86,17 @@ function App() {
 
     const MAX_POINTS = 500;
     const push = (arr, val) => [...arr, [now, val]].slice(-MAX_POINTS);
+    console.log("Updating history with payload:", payload, "Total power:", total);
 
     setHistory((prev) => ({
       externalTemp: push(prev.externalTemp, payload.externalTemp),
       internalTemp: push(prev.internalTemp, payload.internalTemp),
       vipPressure: push(prev.vipPressure, payload.vipPressure),
       pumpPower: push(prev.pumpPower, payload.pumpPower),
-      rPiPower: push(prev.pumpPower, payload.pumpPower),
+      rPiPower: push(prev.pumpPower, payload.rPiPower),
       pumpVoltage: push(prev.pumpVoltage, payload.pumpVoltage),
       rPiVoltage: push(prev.rPiVoltage, payload.rPiVoltage),
+      new_pump_power_data: push(prev.new_pump_power_data, payload.new_pump_power_data),
       totalPower: push(prev.totalPower, total),
       // heuristic: pump is "on" if it's drawing power. Swap this for
       // payload.pumpStatus if/when that field gets added to the payload.
@@ -142,7 +145,7 @@ function App() {
 
     client.on("connect", () => {
       console.log("connected to broker");
-      client.subscribe("sensors/power", (err) => {
+      client.subscribe("RPi/payload", (err) => {
       if (err) console.error("subscribe error:", err);
       else console.log("subscribed successfully");
       });
@@ -151,6 +154,7 @@ function App() {
     client.on("message", (topic, message) => {
       const payload = JSON.parse(message.toString());
       applyPayload(payload);
+      console.log("Received message:", payload);
     });
 
     return () => client.end(); // clean up on unmount
@@ -178,6 +182,51 @@ function App() {
           <div className="boxes">
             <div className="box-row">
             <div className="box-cur-status">
+
+          
+
+          </div> 
+          {/* box  */}
+
+          
+            <AvipChart history={history} metrics={thermalMetrics} />
+          
+            <AvipChart history={history} metrics={powerMetrics} />
+          
+          
+          {/* box  */}
+
+          </div>
+          {/* box row */}
+          
+          <div className="lower-box">
+
+          <div className="data-container">
+          <p>Deflate</p>
+            <div className="data-value">
+              <span>
+            <input className="deflate-input"
+            type="text" 
+            placeholder=" "
+            value={value}
+            onChange={(e) => setDeflateValue(e.target.value)}
+            />
+            </span>
+
+            <span>
+            <button>
+            Start</button>
+            </span>
+
+            </div>
+          </div>
+
+          <div className="data-container">
+          <p>Stop Deflating</p>
+            <button>ON</button>
+          </div>
+
+          
 
           <div className="data-container">
           <p>External Temperature</p>
@@ -260,51 +309,10 @@ function App() {
           <p>Pump</p>
             <span className="data-number">{center_Valve}</span>
           </div>
-
-          </div> 
-          {/* box  */}
-
           
-            <AvipChart history={history} metrics={thermalMetrics} />
-          
-            <AvipChart history={history} metrics={powerMetrics} />
-          
-          
-          {/* box  */}
-
-          </div>
-          {/* box row */}
-          
-          <div className="lower-box">
-
-          <div className="data-container">
-          <p>Deflate</p>
-            <div className="data-value">
-              <span>
-            <input className="deflate-input"
-            type="text" 
-            placeholder=" "
-            value={value}
-            onChange={(e) => setDeflateValue(e.target.value)}
-            />
-            </span>
-
-            <span>
-            <button>
-            Start</button>
-            </span>
-
-            </div>
-          </div>
-
-
-          <div className="data-container">
-          <p>Stop Deflating</p>
-            <button>ON</button>
-          </div>
-
           </div>
           </div>
+          
           </>
         } />
 
