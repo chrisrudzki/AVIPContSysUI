@@ -1,3 +1,14 @@
+// import ReactDOM from 'react-dom/client'
+// import { HashRouter } from 'react-router-dom'
+// import App from './App.jsx'
+// import './index.css'
+
+// ReactDOM.createRoot(document.getElementById('root')).render(
+//   <HashRouter>
+//     <App />
+//   </HashRouter>
+// )
+
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
@@ -8,8 +19,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <App />
   </BrowserRouter>
 )
-// createRoot(document.getElementById('root')).render(
-//   <StrictMode>
-//     <App />
-//   </StrictMode>,
-// )
+// // createRoot(document.getElementById('root')).render(
+// //   <StrictMode>
+// //     <App />
+// //   </StrictMode>,
+// // )

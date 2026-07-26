@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import viteLogo from './assets/vite.svg'
+import AvipHistoryChart from './AvipHistoryChart.jsx';
+import AvipPowerHistoryChart from './AvipPowerHistoryChart.jsx';
 
 import { Routes, Route, useNavigate } from 'react-router-dom'
 import Sim from './pages/simulation.jsx'
 import mqtt from "mqtt";
 import AvipChart from './AvipChart.jsx'
+import AvipPowerChart from './PowerChart.jsx'
 
 import './App.css'
 
@@ -29,7 +32,7 @@ function App() {
 
   const [rPiData, setRPiData] = useState(null)
 
-  const [totalPower, setTotalPower] = useState(0)
+  const [totalPower, setTotalPower] = useState(null)
 
   // Rolling history of data points for the chart. Each array holds
   // [timestamp_ms, value] pairs, capped at MAX_POINTS so it doesn't grow forever.
@@ -46,24 +49,32 @@ function App() {
     new_pump_power_data: [] 
   })
 
+  const [powerHistory, setPowerHistory] = useState({
+    pumpPower: [],
+    totalPower: [],
+    rPiPower: [],      
+    new_pump_power_data: [] 
+  })
+
   // ------------------------------------------------------------------
   // Simulation mode — lets you test the dashboard without a live Pi/MQTT feed
   // ------------------------------------------------------------------
   const [simulate, setSimulate] = useState(false)
 
   // Which metrics each chart box plots. `key` must match a field in `history`.
-  const thermalMetrics = [
+  const leftGraphMetrics = [
     { key: 'externalTemp', name: 'External Temp', color: '#2a78d6' },
     { key: 'internalTemp', name: 'Internal Temp', color: '#1baf7a' },
-    { key: 'vipPressure', name: 'VIP Pressure', color: '#eda100' }
+    { key: 'vipPressure', name: 'VIP Pressure', color: '#eda100' },
+    { key: 'pumpVoltage', name: 'Pump Voltage', color: '#d6a300' },
+    { key: 'rPiVoltage', name: 'RPi Voltage', color: '#c2185b' }
   ]
   const powerMetrics = [
   { key: 'pumpPower', name: 'Pump Power', color: '#008300' },
   { key: 'totalPower', name: 'Total Power', color: '#4a3aa7' },
   { key: 'rPiPower', name: 'RPi Power', color: '#012300' },
-  { key: 'pumpVoltage', name: 'Pump Voltage', color: '#d6a300' },
-  { key: 'rPiVoltage', name: 'RPi Voltage', color: '#c2185b' }
-]
+  ]
+
   const simStateRef = useRef({
     externalTemp: 21,
     internalTemp: 18,
@@ -92,17 +103,22 @@ function App() {
       externalTemp: push(prev.externalTemp, payload.externalTemp),
       internalTemp: push(prev.internalTemp, payload.internalTemp),
       vipPressure: push(prev.vipPressure, payload.vipPressure),
-      pumpPower: push(prev.pumpPower, payload.pumpPower),
-      rPiPower: push(prev.pumpPower, payload.rPiPower),
       pumpVoltage: push(prev.pumpVoltage, payload.pumpVoltage),
       rPiVoltage: push(prev.rPiVoltage, payload.rPiVoltage),
-      new_pump_power_data: push(prev.new_pump_power_data, payload.new_pump_power_data),
-      totalPower: push(prev.totalPower, total),
       // heuristic: pump is "on" if it's drawing power. Swap this for
       // payload.pumpStatus if/when that field gets added to the payload.
       power: push(prev.power, payload.pumpPower > 0 ? 1 : 0)
     }));
-  }
+
+    if (payload.new_pump_power_data == 1){
+      setPowerHistory((prev) => ({
+        pumpPower: push(prev.pumpPower, payload.pumpPower),
+        rPiPower: push(prev.rPiPower, payload.rPiPower),
+        totalPower: push(prev.totalPower, total)
+        }));
+      }
+    
+    }
 
   useEffect(() => {
     if (!simulate) return;
@@ -181,25 +197,191 @@ function App() {
 
           <div className="boxes">
             <div className="box-row">
-            <div className="box-cur-status">
+            {/* <div className="box-cur-status responsive-box-data"> */}
 
+              
+      {/* <div className="data-container">
+          <p>External Temperature</p>
+          <div className="data-value">
+            <span className="data-number">{rPiData?.externalTemp != null ? rPiData.externalTemp.toFixed(1) + " °C" : 0}</span>
+            
+            
+          </div>
+        </div>
+
+          <div className="data-container">
+          <p>Internal Temperature</p>
+          <div className="data-value">
+            <span className="data-number">{rPiData?.internalTemp != null ? rPiData.internalTemp.toFixed(1) + " °C" : 0}</span>
+            
+          </div>
+          </div>
+
+          <div className="data-container">
+          <p>VIP Pressure</p>
+            <div className="data-value">
+            <span className="data-number">{rPiData?.vipPressure != null ? rPiData.vipPressure.toFixed(1) + " Torr" : 0}</span>
+            
+            </div>
+          </div>
+
+          <div className="data-container" style={{ marginTop: "10px" }}>
+          <p>Pump Power Usage</p>
+          <div className="data-value">
+          <span className="data-number">{rPiData?.pumpPower != null ? rPiData.pumpPower.toFixed(1) + " W" : 0}</span>
           
+          </div>
+          </div>
 
-          </div> 
+          <div className="data-container">
+          <p>RPi Power Usage</p>
+          <div className="data-value">
+          <span className="data-number">{rPiData?.rPiPower != null ? rPiData.rPiPower.toFixed(1) + " W" : 0}</span>
+          
+          </div>
+          </div>
+
+          <div className="data-container">
+          <p>Total Power Usage</p>
+          <div className="data-value">
+          <span className="data-number">{totalPower != null ? totalPower.toFixed(1) + " W" : 0}</span>
+          </div>
+          </div>
+
+          <div className="data-container">
+          <p>Pump Voltage</p>
+          <div className="data-value">
+          <span className="data-number">{rPiData?.pumpVoltage != null ? rPiData.pumpVoltage.toFixed(1) + " V" : 0}</span>
+         
+          </div>
+          </div>
+
+          <div className="data-container">
+          <p>RPi Voltage</p>
+          <div className="data-value">
+          <span className="data-number">{rPiData?.rPiVoltage != null ? rPiData.rPiVoltage.toFixed(1) + " V" : 0}</span>
+          
+          </div>
+          </div>
+
+          <div className="data-container" style={{ marginTop: "10px" }}>
+          <p>Valve #1</p>
+            <span className="data-number">{right_Valve}</span>
+          </div>
+
+          <div className="data-container">
+          <p>Valve #2</p>
+            <span className="data-number">{left_Valve}</span>
+          </div>
+
+          <div className="data-container">
+          <p>Pump</p>
+            <span className="data-number">{center_Valve}</span>
+          </div>
+           */}
+
           {/* box  */}
+            <div className="responsive-box-chart">
+              <AvipChart history={history} metrics={leftGraphMetrics} />
+            </div>
 
-          
-            <AvipChart history={history} metrics={thermalMetrics} />
-          
-            <AvipChart history={history} metrics={powerMetrics} />
-          
-          
+            <div className="responsive-box-chart">
+              <AvipPowerChart history={powerHistory} metrics={powerMetrics} />
+            </div>
+
           {/* box  */}
 
           </div>
           {/* box row */}
           
           <div className="lower-box">
+            <div className="lower-box-inner">
+
+            <div className="data-container" style={{ marginTop: "10px" }}>
+          <p>External Temp</p>
+          <div className="data-value">
+            <span className="data-number">{rPiData?.externalTemp != null ? rPiData.externalTemp.toFixed(1) + " °C" : 0}</span>
+            
+          </div>
+        </div>
+
+          <div className="data-container">
+          <p>Internal Temp</p>
+          <div className="data-value">
+            <span className="data-number">{rPiData?.internalTemp != null ? rPiData.internalTemp.toFixed(1) + " °C" : 0}</span>
+            
+          </div>
+          </div>
+
+          <div className="data-container">
+          <p>VIP Pressure</p>
+            <div className="data-value">
+            <span className="data-number">{rPiData?.vipPressure != null ? rPiData.vipPressure.toFixed(1) + " Torr" : 0}</span>
+            
+            </div>
+          </div>
+          </div>
+
+          <div className="lower-box-inner">
+
+          <div className="data-container" style={{ marginTop: "10px" }}>
+          <p>Pump Power Usage</p>
+          <div className="data-value">
+          <span className="data-number">{rPiData?.pumpPower != null ? rPiData.pumpPower.toFixed(1) + " W" : 0}</span>
+          
+          </div>
+          </div>
+
+          <div className="data-container">
+          <p>RPi Power Usage</p>
+          <div className="data-value">
+          <span className="data-number">{rPiData?.rPiPower != null ? rPiData.rPiPower.toFixed(1) + " W" : 0}</span>
+          
+          </div>
+          </div>
+
+          <div className="data-container">
+          <p>Total Power Usage</p>
+          <div className="data-value">
+          <span className="data-number">{totalPower != null ? totalPower.toFixed(1) + " W" : 0}</span>
+          </div>
+          </div>
+
+          <div className="data-container">
+          <p>Pump Voltage</p>
+          <div className="data-value">
+          <span className="data-number">{rPiData?.pumpVoltage != null ? rPiData.pumpVoltage.toFixed(1) + " V" : 0}</span>
+         
+          </div>
+          </div>
+
+          <div className="data-container">
+          <p>RPi Voltage</p>
+          <div className="data-value">
+          <span className="data-number">{rPiData?.rPiVoltage != null ? rPiData.rPiVoltage.toFixed(1) + " V" : 0}</span>
+          
+          </div>
+          </div>
+
+          </div>
+
+          <div className="lower-box-inner">
+
+          <div className="data-container" style={{ marginTop: "10px" }}>
+          <p>Valve #1</p>
+            <span className="data-number">{right_Valve}</span>
+          </div>
+
+          <div className="data-container">
+          <p>Valve #2</p>
+            <span className="data-number">{left_Valve}</span>
+          </div>
+
+          <div className="data-container">
+          <p>Pump</p>
+            <span className="data-number">{center_Valve}</span>
+          </div>
+          
 
           <div className="data-container">
           <p>Deflate</p>
@@ -226,91 +408,29 @@ function App() {
             <button>ON</button>
           </div>
 
+          </div>
+
           
+          </div> 
+          <div className="lower-box">
 
           <div className="data-container">
-          <p>External Temperature</p>
-          <div className="data-value">
-
-
-            <span className="data-number">{rPiData?.externalTemp != null ? rPiData.externalTemp + "°C" : 0}</span>
-            
-            <span className="data-unit">°C</span>
-          </div>
-        </div>
-
-          <div className="data-container">
-          <p>Internal Temperature</p>
-          <div className="data-value">
-            <span className="data-number">{rPiData?.internalTemp != null ? rPiData.internalTemp + "°C" : 0}</span>
-            <span className="data-unit">°C</span>
-          </div>
-          </div>
-
-          <div className="data-container">
-          <p>VIP Pressure</p>
-            <div className="data-value">
-            <span className="data-number">{rPiData?.vipPressure != null ? rPiData.vipPressure + "Torr" : 0}</span>
-            <span className="data-unit">Torr</span>
-            </div>
-          </div>
-
-          <div className="data-container" style={{ marginTop: "10px" }}>
-          <p>Pump Power Usage</p>
-          <div className="data-value">
-          <span className="data-number">{rPiData?.pumpPower != null ? rPiData.pumpPower + "W" : 0}</span>
-          <span className="data-unit">W</span>
-          </div>
-          </div>
-
-          <div className="data-container">
-          <p>RPi Power Usage</p>
-          <div className="data-value">
-          <span className="data-number">{rPiData?.rPiPower != null ? rPiData.rPiPower + "W" : 0}</span>
-          <span className="data-unit">W</span>
-          </div>
-          </div>
-
-          <div className="data-container">
-          <p>Total Power Usage</p>
-          <div className="data-value">
-          <span className="data-number">{totalPower}</span>
-          <span className="data-unit">W</span>
-          </div>
-          </div>
-
-          <div className="data-container">
-          <p>Pump Voltage</p>
-          <div className="data-value">
-          <span className="data-number">{rPiData?.pumpVoltage != null ? rPiData.pumpVoltage + "V" : 0}</span>
-          <span className="data-unit">V</span>
-          </div>
-          </div>
-
-          <div className="data-container">
-          <p>RPi Voltage</p>
-          <div className="data-value">
-          <span className="data-number">{rPiData?.rPiVoltage != null ? rPiData.rPiVoltage + "V" : 0}</span>
-          <span className="data-unit">V</span>
-          </div>
-          </div>
-
-          <div className="data-container" style={{ marginTop: "10px" }}>
-          <p>Valve #1</p>
-            <span className="data-number">{right_Valve}</span>
-          </div>
-
-          <div className="data-container">
-          <p>Valve #2</p>
-            <span className="data-number">{left_Valve}</span>
-          </div>
-
-          <div className="data-container">
-          <p>Pump</p>
+          <p>_ to _</p>
             <span className="data-number">{center_Valve}</span>
           </div>
+
+          
+
+          </div>
           
           </div>
+
+          <div className="responsive-box-chart">
+              <AvipHistoryChart metrics={leftGraphMetrics} />
+          </div>
+
+          <div className="responsive-box-chart">
+              <AvipPowerHistoryChart metrics={powerMetrics} />
           </div>
           
           </>

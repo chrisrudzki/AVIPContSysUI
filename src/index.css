@@ -55,7 +55,8 @@ body {
 }
 
 #root {
-  width: 1126px;
+  /* width: 1126px; */
+  width: 75%;
   max-width: 100%;
   margin: 0 auto;
   text-align: center;
