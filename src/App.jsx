@@ -34,6 +34,11 @@ function App() {
 
   const [totalPower, setTotalPower] = useState(null)
 
+  const [graphRangeGenerate, setGraphRangeGenerate] = useState(null)
+  const [graphRangePowerGenerate, setGraphRangePowerGenerate] = useState(null)
+
+
+
   // Rolling history of data points for the chart. Each array holds
   // [timestamp_ms, value] pairs, capped at MAX_POINTS so it doesn't grow forever.
   const [history, setHistory] = useState({
@@ -444,7 +449,6 @@ function App() {
               <h3>Graph Interval</h3>
 
             <div className="data-container">
-
               <input className="deflate-input"
             type="text" 
             placeholder=" "
