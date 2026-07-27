@@ -43,6 +43,41 @@
   align-items: center; */
 } 
 
+.lower-box-2 {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.5rem;
+  min-height: 210px;
+  min-width: 850px;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+
+  /* justify-content: center;
+  align-items: center; */
+} 
+
+.lower-box-3 {
+  background: transparent;
+  background: rgba(255, 0, 0, 0.17);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.5rem;
+  height: 210px;
+  min-width: 850px;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+
+  /* justify-content: center;
+  align-items: center; */
+} 
+
+h3{
+  margin-top: -35px;
+
+}
 
 .lower-box-inner {
   display: flex;
@@ -55,16 +90,19 @@
   min-width: 0;
 }
 
-/* .lower-box {
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1.5rem;
-  min-height: 250px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px 24px;   
-  */
+.lower-box-inner-2 {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  /* justify-content: center;
+  align-items: center; */
+  width: 100%;
+  flex: 1;
+  min-width: 0;
+  
+} */
+
+
  
 
 .responsive-box-data {
@@ -89,12 +127,12 @@
 
 .box-row {
   display: flex;
-  gap: 9px;
+  gap: 70px;
   justify-content: center;
   flex-wrap: nowrap;   
   width: 100%;
   height: 100%;
-  height: 525px;
+  height: 555px;
 /* 
   align-self: stretch;  /* ← forces just this child to ignore parent's center and fill width * */
 }
@@ -133,17 +171,35 @@
 
 .data-container {
   display: flex;
+  flex-direction: row;
   justify-content: space-between;
   padding: 1px 2.5px;
   font-size: 14.5px;
   /* font-weight: bold; */
 }
 
+.data-container-controls {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 1px 2.5px;
+  font-size: 14.5px;
+  width: 350px;
+  /* font-weight: bold; */
+}
+
 .data-value {
   display: flex;
   gap: 4px;
-  width: 100px;        /* fixed width so all values align */
+  width: 110px;     
 }
+
+.data-value-controls {
+  display: flex;
+  gap: 4px;
+  width: 210px;     
+}
+
 
 .data-number {
   text-align: right;

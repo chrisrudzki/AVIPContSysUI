@@ -154,7 +154,7 @@ export default function AvipPowerBarChart({ metrics }) {
 
   return (
     <div>
-      <button onClick={fetchAndRender}>Refresh Data</button>
+      <button onClick={fetchAndRender}>Refresh Chart</button>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8, alignItems: 'center' }}>
         {metrics.map((metric, i) => (

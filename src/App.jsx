@@ -186,16 +186,19 @@ function App() {
 
         <Route path="/" element={
           <>
-          <button className="corner-btn" onClick={() => navigate('/simulation')}>simulation</button>
-          <button
+         
+          {/* <button className="corner-btn" onClick={() => navigate('/simulation')}>simulation</button> */}
+          {/* <button
             className="corner-btn"
             style={{ right: "160px" }}
             onClick={() => setSimulate((s) => !s)}
           >
             {simulate ? "Stop simulating" : "Simulate data"}
-          </button>
+          </button> */}
 
           <div className="boxes">
+
+             <h2>Live Data</h2>
             <div className="box-row">
             {/* <div className="box-cur-status responsive-box-data"> */}
 
@@ -323,27 +326,26 @@ function App() {
           </div>
 
           <div className="lower-box-inner">
-
           <div className="data-container" style={{ marginTop: "10px" }}>
-          <p>Pump Power Usage</p>
+          <p>Pump Power</p>
           <div className="data-value">
-          <span className="data-number">{rPiData?.pumpPower != null ? rPiData.pumpPower.toFixed(1) + " W" : 0}</span>
+          <span className="data-number">{rPiData?.pumpPower != null ? rPiData.pumpPower.toFixed(1) + " W/min" : 0}</span>
           
           </div>
           </div>
 
           <div className="data-container">
-          <p>RPi Power Usage</p>
+          <p>RPi Power</p>
           <div className="data-value">
-          <span className="data-number">{rPiData?.rPiPower != null ? rPiData.rPiPower.toFixed(1) + " W" : 0}</span>
+          <span className="data-number">{rPiData?.rPiPower != null ? rPiData.rPiPower.toFixed(1) + " W/min" : 0}</span>
           
           </div>
           </div>
 
           <div className="data-container">
-          <p>Total Power Usage</p>
+          <p>Total Power</p>
           <div className="data-value">
-          <span className="data-number">{totalPower != null ? totalPower.toFixed(1) + " W" : 0}</span>
+          <span className="data-number">{totalPower != null ? totalPower.toFixed(1) + " W/min" : 0}</span>
           </div>
           </div>
 
@@ -369,61 +371,115 @@ function App() {
 
           <div className="data-container" style={{ marginTop: "10px" }}>
           <p>Valve #1</p>
+          <div className='data-value'>
             <span className="data-number">{right_Valve}</span>
+          </div>
           </div>
 
           <div className="data-container">
           <p>Valve #2</p>
+          <div className='data-value'>
             <span className="data-number">{left_Valve}</span>
+          </div>
           </div>
 
           <div className="data-container">
           <p>Pump</p>
+          <div className='data-value'>
             <span className="data-number">{center_Valve}</span>
+          </div>
           </div>
           
 
-          <div className="data-container">
-          <p>Deflate</p>
-            <div className="data-value">
-              <span>
+            </div>
+          </div>
+
+          <div className="lower-box-2">
+
+          <div className="lower-box-inner-2">
+
+          <div className="data-container-controls">
+          <p>Pump</p>
+          
+            <div>
+            <button>ON</button>
+            <button>OFF</button>
+            </div>
+          
+          </div>
+
+          <div className="data-container-controls">
+          <p>Isolation Valve #1 </p>
+          
+
+            <div>
+            <button>ON</button>
+            <button>OFF</button>
+            </div>
+          
+          </div>
+
+            <div className="data-container-controls">
+          <p>Timed Pump</p>
+            
+
+
+              <div>
+              
             <input className="deflate-input"
             type="text" 
             placeholder=" "
             value={value}
             onChange={(e) => setDeflateValue(e.target.value)}
             />
-            </span>
+            <button>Start</button>
+            <button>STOP</button>
 
-            <span>
-            <button>
-            Start</button>
-            </span>
+            </div></div>
+            
+            </div>
+
+            <div className="lower-box-inner">
+
+              <h3>Graph Interval</h3>
+
+            <div className="data-container">
+
+              <input className="deflate-input"
+            type="text" 
+            placeholder=" "
+            value={value}
+            onChange={(e) => setDeflateValue(e.target.value)}
+            />
+
+            <p> to </p>
+
+            <input className="deflate-input"
+            type="text" 
+            placeholder=" "
+            value={value}
+            onChange={(e) => setDeflateValue(e.target.value)}
+            />
+            <button>all time</button>
 
             </div>
-          </div>
 
-          <div className="data-container">
-          <p>Stop Deflating</p>
-            <button>ON</button>
-          </div>
+             <button>generate data</button>
 
-          </div>
+            {/* put in total power displays for the interval appear  */}
 
-          
-          </div> 
-          <div className="lower-box">
 
-          <div className="data-container">
-          <p>_ to _</p>
-            <span className="data-number">{center_Valve}</span>
-          </div>
+
+            </div>
+
 
           
 
           </div>
           
           </div>
+
+          <div className='box-row'>
 
           <div className="responsive-box-chart">
               <AvipHistoryChart metrics={leftGraphMetrics} />
@@ -432,6 +488,50 @@ function App() {
           <div className="responsive-box-chart">
               <AvipPowerHistoryChart metrics={powerMetrics} />
           </div>
+
+          
+          </div>
+
+          <div className="box-row">
+          <div className="lower-box-3">
+
+            <div className="lower-box-inner">
+
+              <h2>Delete Data</h2>
+
+            <div className="data-container">
+
+              <input className="deflate-input"
+            type="text" 
+            placeholder=" "
+            value={value}
+            onChange={(e) => setDeflateValue(e.target.value)}
+            />
+
+            <p> to </p>
+
+            <input className="deflate-input"
+            type="text" 
+            placeholder=" "
+            value={value}
+            onChange={(e) => setDeflateValue(e.target.value)}
+            />
+            <button>all time</button>
+
+            </div>
+
+             <button>Delete</button>
+
+            {/* put in total power displays for the interval appear  */}
+
+
+
+            </div>
+
+            
+          </div>
+          </div>
+
           
           </>
         } />

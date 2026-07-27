@@ -226,7 +226,7 @@ export default function AvipHistoryChart({ metrics }) {
   return (
     <div>
 
-    <button onClick={refreshData}>Refresh Data</button>
+    <button onClick={refreshData}>Refresh Chart</button>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8, alignItems: 'center' }}>
         {metrics.map((metric, i) => (
           <label key={metric.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
