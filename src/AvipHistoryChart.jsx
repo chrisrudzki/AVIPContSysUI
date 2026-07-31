@@ -39,6 +39,42 @@ async function fetchAllReadings() {
   return res.json();
 }
 
+// Fetches only rows whose created_at falls within [start, end], inclusive.
+// start/end are expected to be date strings like "2026-07-05" (the shape
+// DateRangePicker produces via <input type="date">). Supabase's REST API
+// (PostgREST) supports gte./lte. filters directly as query params.
+async function fetchRangedReadings(start, end) {
+  // A bare date like "2026-07-05" is midnight UTC, which would exclude
+  // everything on the end date after 00:00. Push end to the end of that
+  // day so the range is inclusive of the whole end date.
+  const startIso = new Date(`${start}T00:00:00.000Z`).toISOString();
+  const endIso = new Date(`${end}T23:59:59.999Z`).toISOString();
+
+  console.log("start: ", startIso);
+  console.log("end: ", endIso);
+
+  const params = new URLSearchParams({
+    select: '*',
+    order: 'created_at.asc',
+    limit: '1000000',
+    'created_at': `gte.${startIso}`,
+  });
+  // URLSearchParams can't hold two values under the same key, so add
+  // the second created_at filter manually.
+  const url = `${SUPABASE_URL}/rest/v1/AVIP_Table?${params.toString()}&created_at=lte.${endIso}`;
+
+  const res = await fetch(url, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  });
+  if (!res.ok) throw new Error(`Supabase fetch failed: ${res.status}`);
+
+  console.log("ALL ROWS");
+  // const data = await res.json();
+  // console.log(data);
+
+  return res.json();
+}
+
 // Reshapes Supabase rows into the same { [metricKey]: [[timestamp_ms, value], ...] }
 // shape your live AvipChart already expects — reading values out of the
 // `data_point` jsonb column, keyed the same way as your MQTT payload.
@@ -49,8 +85,17 @@ function rowsToHistory(rows, metrics) {
   });
   history.power = [];
 
+  // console.log("history to here");
+  // print("created at: ", rows[2].created_at)
   rows.forEach((row) => {
-    const ts = new Date(row.created_at).getTime();
+    // if (!/[+-]\d{2}:\d{2}$|Z$/.test(row.created_at)) {
+    //   console.warn('Missing timezone offset:', row.created_at);
+    // }
+
+    console.log("created at: ", row.created_at);
+    let ts = new Date(row.created_at).getTime();
+    // let ts = row.created_at
+    // ts = ts * 1000;
     const dp = row.data_point ?? {};
 
     metrics.forEach((metric) => {
@@ -60,10 +105,12 @@ function rowsToHistory(rows, metrics) {
     history.power.push([ts, (dp.pumpPower ?? 0) > 0 ? 1 : 0]);
   });
 
+  console.log("history! :", history);
+
   return history;
 }
 
-export default function AvipHistoryChart({ metrics }) {
+export default function AvipHistoryChart({ metrics, drawRange }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
   const [seriesOn, setSeriesOn] = useState(metrics.map(() => true));
@@ -78,6 +125,10 @@ export default function AvipHistoryChart({ metrics }) {
     const history = historyRef.current;
     const onIntervals = getOnIntervals(history.power ?? []);
     const markAreaData = onIntervals.map(([s, e]) => [{ xAxis: s }, { xAxis: e }]);
+
+    console.log("historyRef: ", historyRef.current);
+
+    console.log("history: ", history);
 
     return metrics.map((metric, i) => ({
       name: metric.name,
@@ -104,14 +155,31 @@ export default function AvipHistoryChart({ metrics }) {
   setLoading(true);
   setError(null);
   try {
-    const rows = await fetchAllReadings();
+    // console.log("here 0");
+
+    let rows;
+    if (drawRange.allTime == false){
+      console.log("start: ", drawRange.start, " end: ", drawRange.end);
+      rows = await fetchRangedReadings(drawRange.start, drawRange.end);
+      console.log("got ranged rows");
+    }else{
+      // console.log("here2");
+      rows = await fetchAllReadings();
+    }
+
+
+    console.log("in here ", rows);
+
     historyRef.current = rowsToHistory(rows, metrics);
     chartInstance.current.setOption({ series: buildSeries(powerAreaOn) });
+
   } catch (err) {
+    // console.log("hero")
     setError(err.message);
   } finally {
     setLoading(false);
   }
+
 }
 
 // in the JSX, alongside your other toggles:
@@ -123,6 +191,7 @@ export default function AvipHistoryChart({ metrics }) {
     chartInstance.current = chart;
 
     chart.setOption({
+      useUTC: true,
       tooltip: {
         trigger: 'axis',
         position: (pt) => [pt[0], '10%']
@@ -154,7 +223,7 @@ export default function AvipHistoryChart({ metrics }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // fetch once on mount
+  // fetch once on mount HERE!!!
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -165,8 +234,8 @@ export default function AvipHistoryChart({ metrics }) {
         if (cancelled) return;
         historyRef.current = rowsToHistory(rows, metrics);
 
-        console.log(rows);
-        console.log("Rows:", rows.length);
+        // console.log(rows);
+        // console.log("Rows:", rows.length);
 
         if (chartInstance.current) {
           chartInstance.current.setOption({

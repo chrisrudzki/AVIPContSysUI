@@ -14,22 +14,39 @@ async function fetchAllReadings() {
   return res.json();
 }
 
-// Reshapes Supabase rows into { categories: [...], seriesData: { [metricKey]: [values] } }
-// pulling each value out of the `data_point` jsonb column — one bar per row, no bucketing.
+// Reshapes Supabase rows into { seriesData: { [metricKey]: [[timestamp_ms, value], ...] } }
+// one bar per row, no bucketing, timestamp kept as an actual Date-parseable value
+// so the x-axis can be type: 'time' instead of a category axis of label strings.
 function rowsToBarData(rows, metrics) {
-  const categories = rows.map((row) =>
-    new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-  );
-
   const seriesData = {};
+
+  // Only sum metrics that aren't "totalPower" itself, to avoid double-counting
+  const summableMetrics = metrics.filter((m) => m.key !== 'totalPower');
+
   metrics.forEach((metric) => {
-    seriesData[metric.key] = rows.map((row) => (row.data_point ?? {})[metric.key] ?? 0);
+    if (metric.key === 'totalPower') {
+      // Computed field: sum of all other metrics for this row
+      seriesData[metric.key] = rows.map((row) => {
+        const timestamp = new Date(row.created_at).getTime();
+        const dataPoint = row.data_point ?? {};
+        const total = summableMetrics.reduce(
+          (sum, m) => sum + (dataPoint[m.key] ?? 0),
+          0
+        );
+        return [timestamp, total];
+      });
+    } else {
+      seriesData[metric.key] = rows.map((row) => [
+        new Date(row.created_at).getTime(),
+        (row.data_point ?? {})[metric.key] ?? 0
+      ]);
+    }
   });
 
-  return { categories, seriesData };
+  return { seriesData };
 }
 
-export default function AvipPowerBarChart({ metrics }) {
+export default function AvipPowerBarChart({ metrics, drawRange, deleteRange }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
   const [seriesOn, setSeriesOn] = useState(metrics.map(() => true));
@@ -37,7 +54,7 @@ export default function AvipPowerBarChart({ metrics }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const dataRef = useRef({ categories: [], seriesData: {} });
+  const dataRef = useRef({ seriesData: {} });
   const zoomRef = useRef(null);
 
   function buildSeries() {
@@ -59,7 +76,6 @@ export default function AvipPowerBarChart({ metrics }) {
 
       if (chartInstance.current) {
         chartInstance.current.setOption({
-          xAxis: { data: dataRef.current.categories },
           series: buildSeries()
         });
       }
@@ -76,6 +92,7 @@ export default function AvipPowerBarChart({ metrics }) {
     chartInstance.current = chart;
 
     chart.setOption({
+      useUTC: true,
       tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
       legend: { show: false },
       toolbox: {
@@ -86,7 +103,7 @@ export default function AvipPowerBarChart({ metrics }) {
         }
       },
       grid: { top: 40, left: 50, right: 30, bottom: 80 },
-      xAxis: { type: 'category', data: [] },
+      xAxis: { type: 'time' },
       yAxis: { type: 'value' },
       dataZoom: [
         { type: 'inside', start: 0, end: 100 },
@@ -155,7 +172,6 @@ export default function AvipPowerBarChart({ metrics }) {
   return (
     <div>
       <button onClick={fetchAndRender}>Refresh Chart</button>
-
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8, alignItems: 'center' }}>
         {metrics.map((metric, i) => (
           <label key={metric.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>

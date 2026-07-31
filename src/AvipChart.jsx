@@ -4,24 +4,6 @@ import * as echarts from 'echarts';
 const powerColor = '#e34948';
 const powerName = 'Power on';
 
-function getOnIntervals(powerData) {
-  const intervals = [];
-  let start = null;
-  for (let i = 0; i < powerData.length; i++) {
-    const [time, state] = powerData[i];
-    if (state === 1 && start === null) {
-      start = time;
-    } else if (state === 0 && start !== null) {
-      intervals.push([start, time]);
-      start = null;
-    }
-  }
-  if (start !== null && powerData.length) {
-    intervals.push([start, powerData[powerData.length - 1][0]]);
-  }
-  return intervals;
-}
-
 // `history` shape: { externalTemp, internalTemp, vipPressure, pumpPower, totalPower, power }
 // each is an array of [timestamp_ms, value] pairs, except `power` which is [timestamp_ms, 0|1]
 //
@@ -45,6 +27,24 @@ export default function AvipChart({ history, metrics }) {
   useEffect(() => {
     zoomEnabledRef.current = zoomEnabled;
   }, [zoomEnabled]);
+
+  function getOnIntervals(powerData) {
+  const intervals = [];
+  let start = null;
+  for (let i = 0; i < powerData.length; i++) {
+    const [time, state] = powerData[i];
+    if (state === 1 && start === null) {
+      start = time;
+    } else if (state === 0 && start !== null) {
+      intervals.push([start, time]);
+      start = null;
+    }
+  }
+  if (start !== null && powerData.length) {
+    intervals.push([start, powerData[powerData.length - 1][0]]);
+  }
+  return intervals;
+}
 
   function buildSeries(showPowerArea) {
     const onIntervals = getOnIntervals(history.power);
@@ -106,7 +106,7 @@ export default function AvipChart({ history, metrics }) {
         zoomRef.current = { startValue: dz.startValue, endValue: dz.endValue };
       }
     });
-    
+
     const resize = () => chart.resize();
     window.addEventListener('resize', resize);
     return () => {

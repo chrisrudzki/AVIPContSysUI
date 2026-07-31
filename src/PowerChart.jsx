@@ -2,20 +2,15 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import * as echarts from 'echarts';
 
 // history arrays are index-aligned (each index = one incoming payload).
-// Pull raw values + timestamps straight out, no grouping/averaging.
+// Pull raw values + timestamps straight out, no grouping/averaging, and keep
+// them paired as [timestamp_ms, value] so the x-axis can be type: 'time'.
 function extractSeries(history, metrics) {
-  const timestamps = history[metrics[0]?.key]?.map(([t]) => t) ?? [];
-
-  const categories = timestamps.map((t) =>
-    new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-  );
-
   const seriesData = {};
   metrics.forEach((metric) => {
-    seriesData[metric.key] = (history[metric.key] ?? []).map(([, v]) => v ?? 0);
+    seriesData[metric.key] = (history[metric.key] ?? []).map(([t, v]) => [t, v ?? 0]);
   });
 
-  return { categories, seriesData, timestamps };
+  return { seriesData };
 }
 
 export default function AvipBarChart({ history, metrics }) {
@@ -25,7 +20,7 @@ export default function AvipBarChart({ history, metrics }) {
   const [totals, setTotals] = useState(null); // { [metricKey]: sum } from last brush selection
   const [zoomEnabled, setZoomEnabled] = useState(true);
 
-  // Tracks the user's manual zoom/pan window as absolute category indices,
+  // Tracks the user's manual zoom/pan window as absolute timestamps,
   // so new incoming data doesn't reset the view back to 0-100%.
   // null = "no manual zoom yet, show everything".
   const zoomRef = useRef(null);
@@ -36,7 +31,7 @@ export default function AvipBarChart({ history, metrics }) {
     zoomEnabledRef.current = zoomEnabled;
   }, [zoomEnabled]);
 
-  const { categories, seriesData } = useMemo(
+  const { seriesData } = useMemo(
     () => extractSeries(history, metrics),
     [history, metrics]
   );
@@ -66,7 +61,7 @@ export default function AvipBarChart({ history, metrics }) {
         }
       },
       grid: { top: 40, left: 50, right: 30, bottom: 80 },
-      xAxis: { type: 'category', data: categories },
+      xAxis: { type: 'time', boundaryGap: false },
       yAxis: { type: 'value' },
       dataZoom: [
         { type: 'inside', start: 0, end: 100 },
@@ -83,8 +78,6 @@ export default function AvipBarChart({ history, metrics }) {
   //   brushMode: 'single'
   //   }
   // });
-
-
 
     // Capture the user's zoom/pan whenever they drag the slider or
     // scroll-zoom, so it can be re-applied after every data update below.
@@ -126,11 +119,10 @@ export default function AvipBarChart({ history, metrics }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // update series/categories whenever new payloads arrive
+  // update series whenever new payloads arrive
   useEffect(() => {
     if (chartInstance.current) {
       const update = {
-        xAxis: { data: categories },
         series: buildSeries()
       };
 
@@ -146,7 +138,7 @@ export default function AvipBarChart({ history, metrics }) {
       chartInstance.current.setOption(update);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categories, seriesData]);
+  }, [seriesData]);
 
   function toggleSeries(index) {
     const next = [...seriesOn];

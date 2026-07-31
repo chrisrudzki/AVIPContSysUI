@@ -169,6 +169,25 @@ h3{
   background: rgba(45, 138, 78, 0.1);
 }
 
+
+.corner-btn-2 {
+  /* position: fixed;
+  top: 16px;
+  right: 16px; */
+  background: rgba(170, 59, 255, 0);
+  color: #000201;
+  border: 1px solid #2d8a4e;
+  border-radius: 8px;
+  padding: 4px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.3s;
+}
+
+.corner-btn-2:hover {
+  background: rgba(45, 138, 78, 0.1);
+}
+
 .data-container {
   display: flex;
   flex-direction: row;
@@ -218,4 +237,107 @@ h3{
   font-family: var(--mono);
   color: var(--text-h);
   /* font-size: 10px; */
+}
+
+/* date range  */
+
+.drp {
+  max-width: 28rem;
+  font-family: inherit;
+}
+
+.drp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.drp-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.drp-alltime {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.drp-alltime-checkbox {
+  accent-color: #2563eb;
+}
+
+.drp-fields {
+  display: flex;
+  gap: 1rem;
+}
+
+.drp-fields-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.drp-field {
+  flex: 1;
+}
+
+.drp-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+.drp-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: #111827;
+}
+
+.drp-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #3b82f6;
+  border-color: #3b82f6;
+}
+
+.drp-error {
+  font-size: 0.875rem;
+  color: #dc2626;
+  margin: 0.75rem 0 0;
+}
+
+.drp-alltime-message {
+  font-size: 0.875rem;
+  color: #4b5563;
+  margin: 0.75rem 0 0;
+}
+
+.drp-submit {
+  margin-top: 0.75rem;
+  background: rgba(170, 59, 255, 0);
+  color: #2b2a2a;
+  border: 1px solid #2d8a4e;
+  border-radius: 12px;
+  padding: 4px 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.3s;
+}
+
+.drp-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

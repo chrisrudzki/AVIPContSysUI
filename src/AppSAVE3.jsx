@@ -8,9 +8,10 @@ import Sim from './pages/simulation.jsx'
 import mqtt from "mqtt";
 import AvipChart from './AvipChart.jsx'
 import AvipPowerChart from './PowerChart.jsx'
-import DateRangePicker from './DateRangePicker.jsx'
 
 import './App.css'
+
+//#change
 
 function App() {
   // const [ex_Temp, setExTemp] = useState(0)
@@ -33,9 +34,10 @@ function App() {
 
   const [totalPower, setTotalPower] = useState(null)
 
-  const [graphRangeGenerate, setGraphRangeGenerate] = useState({ start: '', end: '', allTime: true })
-  // const [graphRangePowerGenerate, setGraphRangePowerGenerate] = useState({ start: '', end: '', allTime: true })
-  const [deleteRange, setDeleteRange] = useState(null)
+  const [graphRangeGenerate, setGraphRangeGenerate] = useState(null)
+  const [graphRangePowerGenerate, setGraphRangePowerGenerate] = useState(null)
+
+
 
   // Rolling history of data points for the chart. Each array holds
   // [timestamp_ms, value] pairs, capped at MAX_POINTS so it doesn't grow forever.
@@ -94,19 +96,13 @@ function App() {
   function applyPayload(payload) {
     setRPiData(payload);
 
-    const now = payload.timestamp * 1000
-    const now2 = Date.now();
-
-    // console.log("GOT THE PAYLOAD TIME: ", now2)
-
-    // console.log("Payload time: ", payload.timestamp * 1000)
-
+    const now = Date.now();
     const total = (payload.pumpPower ?? 0) + (payload.rPiPower ?? 0);
     setTotalPower(total);
 
     const MAX_POINTS = 500;
     const push = (arr, val) => [...arr, [now, val]].slice(-MAX_POINTS);
-    // console.log("Updating history with payload:", payload, "Total power:", total);
+    console.log("Updating history with payload:", payload, "Total power:", total);
 
     setHistory((prev) => ({
       externalTemp: push(prev.externalTemp, payload.externalTemp),
@@ -169,7 +165,7 @@ function App() {
     });
 
     client.on("connect", () => {
-      // console.log("connected to broker");
+      console.log("connected to broker");
       client.subscribe("RPi/payload", (err) => {
       if (err) console.error("subscribe error:", err);
       else console.log("subscribed successfully");
@@ -179,14 +175,20 @@ function App() {
     client.on("message", (topic, message) => {
       const payload = JSON.parse(message.toString());
       applyPayload(payload);
-      // console.log("Received message:", payload);
-
+      console.log("Received message:", payload);
     });
 
     return () => client.end(); // clean up on unmount
     }, [simulate]);
 
     // if (!data) return <div>Waiting for data...</div>;
+
+
+
+
+
+
+
 
    return (
     <>
@@ -196,6 +198,7 @@ function App() {
 
         <Route path="/" element={
           <>
+         
           {/* <button className="corner-btn" onClick={() => navigate('/simulation')}>simulation</button> */}
           {/* <button
             className="corner-btn"
@@ -411,8 +414,8 @@ function App() {
           <p>Pump</p>
           
             <div>
-            <button className="corner-btn-2">ON</button>
-            <button className="corner-btn-2">OFF</button>
+            <button>ON</button>
+            <button>OFF</button>
             </div>
           
           </div>
@@ -422,8 +425,8 @@ function App() {
           
 
             <div>
-            <button className="corner-btn-2">ON</button>
-            <button className="corner-btn-2">OFF</button>
+            <button>ON</button>
+            <button>OFF</button>
             </div>
           
           </div>
@@ -441,8 +444,8 @@ function App() {
             value={value}
             onChange={(e) => setDeflateValue(e.target.value)}
             />
-            <button className="corner-btn-2">Start</button>
-            <button className="corner-btn-2">STOP</button>
+            <button>Start</button>
+            <button>STOP</button>
 
             </div></div>
             
@@ -450,18 +453,66 @@ function App() {
 
             <div className="lower-box-inner">
 
-              <DateRangePicker
-                title="Graph Interval"
-                actionLabel="generate data"
-                idPrefix="graph-range"
-                onSubmit={(range) => {
-                  setGraphRangeGenerate(range);
-                  // TODO: use range.start / range.end / range.allTime to
-                  // fetch or filter the history data shown in the charts below
-                  console.log("RANGE: ", range)
-                }}
-              />
+
+
+            <div class="drp-header">
+              <h2 class="drp-title">Graph Interval</h2>
+              
+              </div>
+ 
+            <div class="drp-fields">
+            <div class="drp-field">
+            <label class="drp-label" for="drp-start">Start date</label>
+              <input type="date" id="drp-start" class="drp-input" />
+              </div>
+              <div class="drp-field">
+                <label class="drp-label" for="drp-end">End date</label>
+                <input type="date" id="drp-end" class="drp-input" />
+                <label class="drp-alltime">
+                <input type="checkbox" class="drp-alltime-checkbox" />
+                  All time
+                </label>
+                
+              </div>
             </div>
+ 
+            <p class="drp-error" hidden></p>
+            <p class="drp-alltime-message" hidden>All time selected</p>
+          
+  
+              {/* <h3>Graph Interval</h3>
+
+            <div className="data-container">
+              <input className="deflate-input"
+            type="text" 
+            placeholder=" "
+            value={value}
+            onChange={(e) => setDeflateValue(e.target.value)}
+            />
+
+            <p> to </p>
+
+            <input className="deflate-input"
+            type="text" 
+            placeholder=" "
+            value={value}
+            onChange={(e) => setDeflateValue(e.target.value)}
+            />
+            <button>all time</button>
+
+            </div> */}
+
+             <button>generate data</button>
+
+            {/* put in total power displays for the interval appear  */}
+
+
+
+            </div>
+
+
+          
+
           </div>
           
           </div>
@@ -469,37 +520,55 @@ function App() {
           <div className='box-row'>
 
           <div className="responsive-box-chart">
-              <AvipHistoryChart drawRange={graphRangeGenerate} metrics={leftGraphMetrics} />
+              <AvipHistoryChart metrics={leftGraphMetrics} />
           </div>
 
           <div className="responsive-box-chart">
-              <AvipPowerHistoryChart drawRange={graphRangeGenerate} metrics={powerMetrics} />
+              <AvipPowerHistoryChart metrics={powerMetrics} />
           </div>
 
           
           </div>
 
-          {/* <div className="box-row">
+          <div className="box-row">
           <div className="lower-box-3">
 
             <div className="lower-box-inner">
+              <h2>Delete Data</h2>
+            <div className="data-container">
 
-              <DateRangePicker
-                title="Delete Data"
-                actionLabel="Delete"
-                idPrefix="delete-range"
-                onSubmit={(range) => {
-                  setDeleteRange(range);
-                  deleteDataRange(range);
-                  // TODO: call the delete endpoint with range.start / range.end / range.allTime
-                  console.log("Delete requested for range:", range);
-                }}
-              />
+              <input className="deflate-input"
+            type="text" 
+            placeholder=" "
+            value={value}
+            onChange={(e) => setDeflateValue(e.target.value)}
+            />
+
+            <p> to </p>
+
+            <input className="deflate-input"
+            type="text" 
+            placeholder=" "
+            value={value}
+            onChange={(e) => setDeflateValue(e.target.value)}
+            />
+            <button>all time</button>
 
             </div>
+
+             <button>Delete</button>
+
+            {/* put in total power displays for the interval appear  */}
+
+
+
+            </div>
+
+            
+          </div>
           </div>
 
-          </div> */}
+          
           </>
         } />
 
