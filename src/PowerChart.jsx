@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import * as echarts from 'echarts';
 
+
 // history arrays are index-aligned (each index = one incoming payload).
 // Pull raw values + timestamps straight out, no grouping/averaging, and keep
 // them paired as [timestamp_ms, value] so the x-axis can be type: 'time'.
@@ -17,7 +18,6 @@ export default function AvipBarChart({ history, metrics }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
   const [seriesOn, setSeriesOn] = useState(metrics.map(() => true));
-  const [totals, setTotals] = useState(null); // { [metricKey]: sum } from last brush selection
   const [zoomEnabled, setZoomEnabled] = useState(true);
 
   // Tracks the user's manual zoom/pan window as absolute timestamps,
@@ -26,6 +26,8 @@ export default function AvipBarChart({ history, metrics }) {
   const zoomRef = useRef(null);
 
   const zoomEnabledRef = useRef(true);
+
+  
 
   useEffect(() => {
     zoomEnabledRef.current = zoomEnabled;
@@ -70,14 +72,7 @@ export default function AvipBarChart({ history, metrics }) {
       series: buildSeries()
     });
 
-  //   chart.dispatchAction({
-  //   type: 'takeGlobalCursor',
-  //   key: 'brush',
-  //   brushOption: {
-  //   brushType: 'lineX',
-  //   brushMode: 'single'
-  //   }
-  // });
+ 
 
     // Capture the user's zoom/pan whenever they drag the slider or
     // scroll-zoom, so it can be re-applied after every data update below.
@@ -88,27 +83,6 @@ export default function AvipBarChart({ history, metrics }) {
         zoomRef.current = { startValue: dz.startValue, endValue: dz.endValue };
       }
     });
-
-    // Fires whenever the user drags a brush selection or clears it.
-    // chart.on('brushSelected', (params) => {
-    //   const batch = params.batch && params.batch[0];
-    //   if (!batch || !batch.selected || !batch.selected.length) {
-    //     setTotals(null);
-    //     return;
-    //   }
-
-
-
-    //   const nextTotals = {};
-    //   batch.selected.forEach((sel) => {
-    //     const metric = metrics[sel.seriesIndex];
-    //     if (!metric) return;
-    //     const values = seriesData[metric.key] ?? [];
-    //     const sum = sel.dataIndex.reduce((acc, idx) => acc + (values[idx] ?? 0), 0);
-    //     nextTotals[metric.key] = Number(sum.toFixed(2));
-    //   });
-    //   setTotals(nextTotals);
-    // });
 
     const resize = () => chart.resize();
     window.addEventListener('resize', resize);
@@ -204,22 +178,11 @@ export default function AvipBarChart({ history, metrics }) {
           Zoom
         </label>
 
-      <div className="box">
+      <div style={{ position: "absolute", top: "75px"}} className="box">
         <div ref={chartRef} style={{ width: '100%', height: 395 }} />
       </div>
 
-      {/* {totals && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 8, fontSize: 13 }}>
-          {metrics.map((metric) =>
-            totals[metric.key] != null ? (
-              <div key={metric.key} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <span style={{ width: 10, height: 10, borderRadius: 2, background: metric.color, display: 'inline-block' }} />
-                <strong>{metric.name} total:</strong> {totals[metric.key]}
-              </div>
-            ) : null
-          )}
-        </div>
-      )} */}
+      
     </div>
   );
 }

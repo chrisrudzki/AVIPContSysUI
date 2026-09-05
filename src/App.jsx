@@ -4,11 +4,15 @@ import AvipHistoryChart from './AvipHistoryChart.jsx';
 import AvipPowerHistoryChart from './AvipPowerHistoryChart.jsx';
 
 import { Routes, Route, useNavigate } from 'react-router-dom'
+import { fetchAllReadings, fetchRangedReadings } from './utils/DataBaseQuery.jsx';
+
+
 import Sim from './pages/simulation.jsx'
 import mqtt from "mqtt";
 import AvipChart from './AvipChart.jsx'
 import AvipPowerChart from './PowerChart.jsx'
 import DateRangePicker from './DateRangePicker.jsx'
+import * as XLSX from 'xlsx';
 
 import './App.css'
 
@@ -34,8 +38,14 @@ function App() {
   const [totalPower, setTotalPower] = useState(null)
 
   const [graphRangeGenerate, setGraphRangeGenerate] = useState({ start: '', end: '', allTime: true })
+
+  const [isPumpOn, setIsPumpOn] = useState(false)
+
+  const [pumpTimeoutDone, setPumpTimeoutDone] = useState(true)
+
+  let client = useRef(null);
   // const [graphRangePowerGenerate, setGraphRangePowerGenerate] = useState({ start: '', end: '', allTime: true })
-  const [deleteRange, setDeleteRange] = useState(null)
+  // const [deleteRange, setDeleteRange] = useState(null)
 
   // Rolling history of data points for the chart. Each array holds
   // [timestamp_ms, value] pairs, capped at MAX_POINTS so it doesn't grow forever.
@@ -89,6 +99,21 @@ function App() {
     pumpOn: true
   })
 
+  function flattenRows(rows) {
+    return rows.map((row) => ({
+      created_at: row.created_at,
+      ...row.data_point, // spreads externalTemp, pumpPower, etc. into top-level columns
+    }));
+  }
+
+  async function exportToSpreadsheet(rows, filename = 'avip_data.xlsx') {
+      // rows = array of objects, e.g. what fetchAllReadings() already returns
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
+      XLSX.writeFile(workbook, filename);
+    }
+
   // Shared handler: both the real MQTT message handler and the simulator
   // call this so the rest of the app doesn't care where the data came from.
   function applyPayload(payload) {
@@ -108,6 +133,8 @@ function App() {
     const push = (arr, val) => [...arr, [now, val]].slice(-MAX_POINTS);
     // console.log("Updating history with payload:", payload, "Total power:", total);
 
+    console.log("PAYLOAD: ex temp", payload.externalTemp, "in temp", payload.internalTemp, "vip pressure", payload.vipPressure, "pump power", payload.pumpPower, "rPi power", payload.rPiPower, "total power", total, "pump voltage", payload.pumpVoltage, "rPi voltage", payload.rPiVoltage);
+
     setHistory((prev) => ({
       externalTemp: push(prev.externalTemp, payload.externalTemp),
       internalTemp: push(prev.internalTemp, payload.internalTemp),
@@ -119,7 +146,10 @@ function App() {
       power: push(prev.power, payload.pumpPower > 0 ? 1 : 0)
     }));
 
-    if (payload.new_pump_power_data == 1){
+    console.log("new pump power data: ", payload.new_pump_power_data);
+    
+    if (payload.new_pump_power_data == 1) {
+      console.log("set power history");
       setPowerHistory((prev) => ({
         pumpPower: push(prev.pumpPower, payload.pumpPower),
         rPiPower: push(prev.rPiPower, payload.rPiPower),
@@ -129,62 +159,107 @@ function App() {
     
     }
 
+  // useEffect(() => {
+  //   // if (!simulate) return;
+
+  //   const interval = setInterval(() => {
+  //     const s = simStateRef.current;
+
+  //     // random walk each field a little, occasionally flip the pump on/off
+  //     s.externalTemp += (Math.random() - 0.5) * 0.3;
+  //     s.internalTemp += (Math.random() - 0.5) * 0.2;
+  //     s.vipPressure = Math.max(0, s.vipPressure + (Math.random() - 0.5) * 0.002);
+  //     if (Math.random() < 0.05) s.pumpOn = !s.pumpOn;
+  //     s.pumpPower = s.pumpOn ? Math.max(0, 40 + (Math.random() - 0.5) * 8) : 0;
+  //     s.rPiPower = Math.max(0, 3 + (Math.random() - 0.5) * 0.5);
+  //     s.pumpVoltage = s.pumpOn ? 24 + (Math.random() - 0.5) : 0;
+  //     s.rPiVoltage = 5 + (Math.random() - 0.5) * 0.1;
+
+  //     applyPayload({
+  //       externalTemp: Number(s.externalTemp.toFixed(2)),
+  //       internalTemp: Number(s.internalTemp.toFixed(2)),
+  //       vipPressure: Number(s.vipPressure.toFixed(4)),
+  //       pumpPower: Number(s.pumpPower.toFixed(1)),
+  //       rPiPower: Number(s.rPiPower.toFixed(2)),
+  //       pumpVoltage: Number(s.pumpVoltage.toFixed(2)),
+  //       rPiVoltage: Number(s.rPiVoltage.toFixed(2))
+  //     });
+  //   }, 1000); // one fake reading per second — change to match your real cadence
+
+  //   return () => clearInterval(interval);
+  // }, []);
+
   useEffect(() => {
-    if (!simulate) return;
-
-    const interval = setInterval(() => {
-      const s = simStateRef.current;
-
-      // random walk each field a little, occasionally flip the pump on/off
-      s.externalTemp += (Math.random() - 0.5) * 0.3;
-      s.internalTemp += (Math.random() - 0.5) * 0.2;
-      s.vipPressure = Math.max(0, s.vipPressure + (Math.random() - 0.5) * 0.002);
-      if (Math.random() < 0.05) s.pumpOn = !s.pumpOn;
-      s.pumpPower = s.pumpOn ? Math.max(0, 40 + (Math.random() - 0.5) * 8) : 0;
-      s.rPiPower = Math.max(0, 3 + (Math.random() - 0.5) * 0.5);
-      s.pumpVoltage = s.pumpOn ? 24 + (Math.random() - 0.5) : 0;
-      s.rPiVoltage = 5 + (Math.random() - 0.5) * 0.1;
-
-      applyPayload({
-        externalTemp: Number(s.externalTemp.toFixed(2)),
-        internalTemp: Number(s.internalTemp.toFixed(2)),
-        vipPressure: Number(s.vipPressure.toFixed(4)),
-        pumpPower: Number(s.pumpPower.toFixed(1)),
-        rPiPower: Number(s.rPiPower.toFixed(2)),
-        pumpVoltage: Number(s.pumpVoltage.toFixed(2)),
-        rPiVoltage: Number(s.rPiVoltage.toFixed(2))
-      });
-    }, 1000); // one fake reading per second — change to match your real cadence
-
-    return () => clearInterval(interval);
-  }, [simulate]);
-
-  useEffect(() => {
-    if (simulate) return; // don't open a real connection while simulating
-
+    
     // ws:// not mqtt:// — browsers need the WebSocket listener
-    const client = mqtt.connect("wss://2d30bbe70f3947a39ff7131ae78b027e.s1.eu.hivemq.cloud:8884/mqtt", {
-      username: "AVIPLab2",
-      password: "ControlSoft123!",
+    let mqttClient = mqtt.connect("wss://e17befc47e684572a7e116a22da1ad42.s1.eu.hivemq.cloud:8884/mqtt", {
+      username: "AVIPLab",
+      password: "AVIPCom445!",
     });
 
-    client.on("connect", () => {
+    client.current = mqttClient;
+
+    mqttClient.on("connect", () => {
       // console.log("connected to broker");
-      client.subscribe("RPi/payload", (err) => {
+      mqttClient.subscribe("RPi/payload", (err) => {
       if (err) console.error("subscribe error:", err);
       else console.log("subscribed successfully");
       });
     });
 
-    client.on("message", (topic, message) => {
+    mqttClient.on("message", (topic, message) => {
       const payload = JSON.parse(message.toString());
       applyPayload(payload);
       // console.log("Received message:", payload);
 
     });
 
-    return () => client.end(); // clean up on unmount
-    }, [simulate]);
+    return () => mqttClient.end(); // clean up on unmount
+    }, []);
+
+
+    //WORKING
+    function handlePumpToggle(isOn) {
+      // s
+      if (isOn) {
+        setIsPumpOn(true);
+        console.log("Pump turned ON");
+        setPumpTimeoutDone(false);
+
+        const timer = setTimeout(() => {
+          setPumpTimeoutDone(true);
+        }, 4000); // 4 seconds
+
+        
+        client.current?.publish("RPi/pump", JSON.stringify({ on: true }), { qos: 1 }, (err) => {
+        if (err) console.error("Publish failed:", err);
+        else console.log("Published ON");
+        
+    });
+        //set timer to disallow turning on for 5 seconds
+        // send a command to turn on the pump
+
+
+        //set timer to disallow turning off for 5 seconds
+        // send a command to turn on the pump
+
+      }else{
+        setIsPumpOn(false);
+        console.log("Pump turned OFF");
+        setPumpTimeoutDone(false);
+
+        const timer = setTimeout(() => {
+          setPumpTimeoutDone(true);
+        }, 4000); // 4 seconds
+
+        client.current?.publish("RPi/pump", JSON.stringify({ on: false }), { qos: 1 }, (err) => {
+          if (err) console.error("Publish failed:", err);
+          else console.log("Published OFF");
+        });
+        //set timer to disallow turning on for 5 seconds
+      }
+
+    }
 
     // if (!data) return <div>Waiting for data...</div>;
 
@@ -209,90 +284,7 @@ function App() {
 
              <h2>Live Data</h2>
             <div className="box-row">
-            {/* <div className="box-cur-status responsive-box-data"> */}
-
-              
-      {/* <div className="data-container">
-          <p>External Temperature</p>
-          <div className="data-value">
-            <span className="data-number">{rPiData?.externalTemp != null ? rPiData.externalTemp.toFixed(1) + " °C" : 0}</span>
-            
-            
-          </div>
-        </div>
-
-          <div className="data-container">
-          <p>Internal Temperature</p>
-          <div className="data-value">
-            <span className="data-number">{rPiData?.internalTemp != null ? rPiData.internalTemp.toFixed(1) + " °C" : 0}</span>
-            
-          </div>
-          </div>
-
-          <div className="data-container">
-          <p>VIP Pressure</p>
-            <div className="data-value">
-            <span className="data-number">{rPiData?.vipPressure != null ? rPiData.vipPressure.toFixed(1) + " Torr" : 0}</span>
-            
-            </div>
-          </div>
-
-          <div className="data-container" style={{ marginTop: "10px" }}>
-          <p>Pump Power Usage</p>
-          <div className="data-value">
-          <span className="data-number">{rPiData?.pumpPower != null ? rPiData.pumpPower.toFixed(1) + " W" : 0}</span>
-          
-          </div>
-          </div>
-
-          <div className="data-container">
-          <p>RPi Power Usage</p>
-          <div className="data-value">
-          <span className="data-number">{rPiData?.rPiPower != null ? rPiData.rPiPower.toFixed(1) + " W" : 0}</span>
-          
-          </div>
-          </div>
-
-          <div className="data-container">
-          <p>Total Power Usage</p>
-          <div className="data-value">
-          <span className="data-number">{totalPower != null ? totalPower.toFixed(1) + " W" : 0}</span>
-          </div>
-          </div>
-
-          <div className="data-container">
-          <p>Pump Voltage</p>
-          <div className="data-value">
-          <span className="data-number">{rPiData?.pumpVoltage != null ? rPiData.pumpVoltage.toFixed(1) + " V" : 0}</span>
-         
-          </div>
-          </div>
-
-          <div className="data-container">
-          <p>RPi Voltage</p>
-          <div className="data-value">
-          <span className="data-number">{rPiData?.rPiVoltage != null ? rPiData.rPiVoltage.toFixed(1) + " V" : 0}</span>
-          
-          </div>
-          </div>
-
-          <div className="data-container" style={{ marginTop: "10px" }}>
-          <p>Valve #1</p>
-            <span className="data-number">{right_Valve}</span>
-          </div>
-
-          <div className="data-container">
-          <p>Valve #2</p>
-            <span className="data-number">{left_Valve}</span>
-          </div>
-
-          <div className="data-container">
-          <p>Pump</p>
-            <span className="data-number">{center_Valve}</span>
-          </div>
-           */}
-
-          {/* box  */}
+    
             <div className="responsive-box-chart">
               <AvipChart history={history} metrics={leftGraphMetrics} />
             </div>
@@ -398,8 +390,7 @@ function App() {
             <span className="data-number">{center_Valve}</span>
           </div>
           </div>
-          
-
+        
             </div>
           </div>
 
@@ -411,8 +402,8 @@ function App() {
           <p>Pump</p>
           
             <div>
-            <button className="corner-btn-2">ON</button>
-            <button className="corner-btn-2">OFF</button>
+            <button disabled={isPumpOn} className={`corner-btn-2 ${isPumpOn || !pumpTimeoutDone ? "btn-disabled" : ""}`} onClick={() => handlePumpToggle(true)} >ON</button>
+            <button disabled={!isPumpOn} className={`corner-btn-2 ${!isPumpOn || !pumpTimeoutDone ? "btn-disabled" : ""}`} onClick={() => handlePumpToggle(false)} >OFF</button>
             </div>
           
           </div>
@@ -420,7 +411,6 @@ function App() {
           <div className="data-container-controls">
           <p>Isolation Valve #1 </p>
           
-
             <div>
             <button className="corner-btn-2">ON</button>
             <button className="corner-btn-2">OFF</button>
@@ -452,7 +442,7 @@ function App() {
 
               <DateRangePicker
                 title="Graph Interval"
-                actionLabel="generate data"
+                actionLabel="Set Interval"
                 idPrefix="graph-range"
                 onSubmit={(range) => {
                   setGraphRangeGenerate(range);
@@ -461,6 +451,23 @@ function App() {
                   console.log("RANGE: ", range)
                 }}
               />
+
+              <button onClick={async () => {
+             
+                if (graphRangeGenerate.allTime == false){
+                  console.log("start: ", graphRangeGenerate.start, " end: ", graphRangeGenerate.end);
+                  const rows = await fetchRangedReadings(graphRangeGenerate.start, graphRangeGenerate.end);
+                  console.log("ALL ROWS2: ", rows);
+                  
+                  exportToSpreadsheet(flattenRows(rows));
+                }else{
+                  const rows = await fetchAllReadings();
+                  console.log("ALL ROWS: ", rows);
+                  exportToSpreadsheet(flattenRows(rows));
+                }
+
+            }} className="corner-btn-2">Export to Excel</button>
+              
             </div>
           </div>
           
@@ -468,15 +475,14 @@ function App() {
 
           <div className='box-row'>
 
-          <div className="responsive-box-chart">
+          <div style={{position:"relative"}} className="responsive-box-chart">
               <AvipHistoryChart drawRange={graphRangeGenerate} metrics={leftGraphMetrics} />
           </div>
 
-          <div className="responsive-box-chart">
+          <div style={{position: "relative"}} className="responsive-box-chart">
               <AvipPowerHistoryChart drawRange={graphRangeGenerate} metrics={powerMetrics} />
           </div>
 
-          
           </div>
 
           {/* <div className="box-row">
@@ -502,7 +508,6 @@ function App() {
           </div> */}
           </>
         } />
-
 
         <Route path="/simulation" element={<Sim />} />
       </Routes>

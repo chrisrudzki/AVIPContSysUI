@@ -11,12 +11,14 @@
 }
 
 .box {
+  box-sizing: border-box;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1rem;
-  height: 400px
-
+  height: 400px;
+  top: 105px;
+  width: 100%;
 }
 
 .box-cur-status {
@@ -76,7 +78,6 @@
 
 h3{
   margin-top: -35px;
-
 }
 
 .lower-box-inner {
@@ -100,7 +101,7 @@ h3{
   flex: 1;
   min-width: 0;
   
-} */
+}
 
 
  
@@ -113,10 +114,15 @@ h3{
 }
 
 .responsive-box-chart {
+  position: relative;
   flex: 1 1 25%;       /* grow: 0, shrink: 1, basis: 20% */
-  max-width: 40%;   /* stop growing past roughly a third of the row */
-  min-width: 550px;         /* lets flex items actually shrink below content size */
+  /* max-width: 40%;    */
+  width: 550px;         /* lets flex items actually shrink below content size */
+  min-width: 525px;         /* lets flex items actually shrink below content size */
   box-sizing: border-box;
+  height: 400px;
+  
+  /* overflow: hidden; */
 }
 
 @media (max-width: 1024px) {
@@ -131,23 +137,31 @@ h3{
   justify-content: center;
   flex-wrap: nowrap;   
   width: 100%;
-  height: 100%;
   height: 555px;
 /* 
   align-self: stretch;  /* ← forces just this child to ignore parent's center and fill width * */
 }
 
 @media (max-width: 1350px) {
+
+  .boxes {
+    gap: 16px;
+    padding-bottom: 5px;
+  }
+
   .box-row {
     flex-direction: column;
     align-items: center;  /* center the stacked boxes horizontally */
-    height: 100%;
+    height: 585px;
+    
+    gap: 450px;           
   }
 
-  .responsive-box {
-    max-width: 100%;   /* let each box use the full row width once stacked */
-    width: 100%;
+  .lower-box {
+    margin-top : 450px;
   }
+
+  
 }
 
 
@@ -219,7 +233,6 @@ h3{
   width: 210px;     
 }
 
-
 .data-number {
   text-align: right;
   flex: 1;             /* takes up remaining space, pushing unit to same spot */
@@ -252,13 +265,15 @@ h3{
   justify-content: space-between;
   margin-bottom: 1rem;
   gap: 1rem;
+  padding-top: 40px;
 }
 
 .drp-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #111827;
+  font-size: 1rem;
+  font-weight: 550;
+  color: #151c2b;
   margin: 0;
+  padding-bottom: -10px;
 }
 
 .drp-alltime {
@@ -338,6 +353,11 @@ h3{
 }
 
 .drp-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

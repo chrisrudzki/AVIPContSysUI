@@ -4,6 +4,21 @@ import * as echarts from 'echarts';
 import { useEffect, useRef, useState } from 'react';
 import { fetchAllReadings, fetchRangedReadings } from './utils/DataBaseQuery.jsx';
 
+// const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+// const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
+
+// // Fetches every row from AVIP_Table, ordered by created_at.
+// async function fetchAllReadings() {
+//   const res = await fetch(
+//     `${SUPABASE_URL}/rest/v1/AVIP_Table?select=*&order=created_at.asc&limit=1000000`,
+//     { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+//   );
+//   if (!res.ok) throw new Error(`Supabase fetch failed: ${res.status}`);
+//   return res.json();
+// }
+
+
+
 // Reshapes Supabase rows into { seriesData: { [metricKey]: [[timestamp_ms, value], ...] } }
 // one bar per row, no bucketing, timestamp kept as an actual Date-parseable value
 // so the x-axis can be type: 'time' instead of a category axis of label strings.
@@ -13,29 +28,22 @@ function rowsToBarData(rows, metrics) {
   // Only sum metrics that aren't "totalPower" itself, to avoid double-counting
   const summableMetrics = metrics.filter((m) => m.key !== 'totalPower');
 
-  // Compute each row's total power up front, then drop rows where it's 0
-  // so a zero-power reading doesn't show as an empty/zero-height bar.
-  const rowsWithTotal = rows.map((row) => {
-    const dataPoint = row.data_point ?? {};
-    const total = summableMetrics.reduce(
-      (sum, m) => sum + (dataPoint[m.key] ?? 0),
-      0
-    );
-    return { row, dataPoint, total };
-  });
-
-  const filteredRows = rowsWithTotal.filter(({ total }) => total !== 0);
-
   metrics.forEach((metric) => {
     if (metric.key === 'totalPower') {
-      seriesData[metric.key] = filteredRows.map(({ row, total }) => [
-        new Date(row.created_at).getTime(),
-        total
-      ]);
+      // Computed field: sum of all other metrics for this row
+      seriesData[metric.key] = rows.map((row) => {
+        const timestamp = new Date(row.created_at).getTime();
+        const dataPoint = row.data_point ?? {};
+        const total = summableMetrics.reduce(
+          (sum, m) => sum + (dataPoint[m.key] ?? 0),
+          0
+        );
+        return [timestamp, total];
+      });
     } else {
-      seriesData[metric.key] = filteredRows.map(({ row, dataPoint }) => [
+      seriesData[metric.key] = rows.map((row) => [
         new Date(row.created_at).getTime(),
-        dataPoint[metric.key] ?? 0
+        (row.data_point ?? {})[metric.key] ?? 0
       ]);
     }
   });
@@ -64,19 +72,64 @@ export default function AvipPowerBarChart({ metrics, drawRange, deleteRange }) {
     }));
   }
 
+
+  // Fetches only rows whose created_at falls within [start, end], inclusive.
+// start/end are expected to be date strings like "2026-07-05" (the shape
+// DateRangePicker produces via <input type="date">). Supabase's REST API
+// (PostgREST) supports gte./lte. filters directly as query params.
+// async function fetchRangedReadings(start, end) {
+//     // A bare date like "2026-07-05" is midnight UTC, which would exclude
+//     // everything on the end date after 00:00. Push end to the end of that
+//     // day so the range is inclusive of the whole end date.
+//     // const startIso = new Date(`${start}T00:00:00.000Z`).toISOString();
+//     // const endIso = new Date(`${end}T23:59:59.999Z`).toISOString();
+
+//     // WORKING HERE 
+
+//     const startIso = new Date(`${start}:00.000Z`).toISOString();
+//     const endIso = new Date(`${end}:59.999Z`).toISOString();
+
+//     console.log("start: ", startIso);
+//     console.log("end: ", endIso);
+
+//     const params = new URLSearchParams({
+//       select: '*',
+//       order: 'created_at.asc',
+//       limit: '1000000',
+//       'created_at': `gte.${startIso}`,
+//      });
+//     // URLSearchParams can't hold two values under the same key, so add
+//     // the second created_at filter manually.
+//     const url = `${SUPABASE_URL}/rest/v1/AVIP_Table?${params.toString()}&created_at=lte.${endIso}`;
+
+//     const res = await fetch(url, {
+//       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+//     });
+//     if (!res.ok) throw new Error(`Supabase fetch failed: ${res.status}`);
+
+//     console.log("ALL ROWS");
+//     // const data = await res.json();
+//     // console.log(data);
+
+//     return res.json();
+//   }
+
   async function fetchAndRender() {
     setLoading(true);
     setError(null);
     try {
+      // let rows = await fetchAllReadings();
+
       let rows;
       if (drawRange.allTime == false){
         console.log("start: ", drawRange.start, " end: ", drawRange.end);
         rows = await fetchRangedReadings(drawRange.start, drawRange.end);
         console.log("got ranged rows");
       }else{
+        // console.log("here2");
         rows = await fetchAllReadings();
       }
-
+      
       dataRef.current = rowsToBarData(rows, metrics);
 
       if (chartInstance.current) {
@@ -174,6 +227,7 @@ export default function AvipPowerBarChart({ metrics, drawRange, deleteRange }) {
     });
   }
 
+
   return (
     <div>
       <button onClick={fetchAndRender}>Refresh Chart</button>
@@ -204,10 +258,15 @@ export default function AvipPowerBarChart({ metrics, drawRange, deleteRange }) {
 
       {loading && <p style={{ fontSize: 13 }}>Loading history…</p>}
       {error && <p style={{ fontSize: 13, color: 'red' }}>Failed to load: {error}</p>}
-
+        
+        {/* style={{position:"relative"}} */}
       <div style={{ position: "absolute" }} className="box">
         <div ref={chartRef} style={{ width: '100%', height: 395 }} />
       </div>
+
+
+      
+
     </div>
   );
 }

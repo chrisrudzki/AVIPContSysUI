@@ -215,7 +215,7 @@ export default function AvipChart({ history, metrics }) {
           Zoom
         </label>
       </div>
-      <div className="box">
+      <div style={{ position: "absolute", top: "75px"}} className="box">
         <div ref={chartRef} style={{ width: '100%', height: 395, }} />
       </div>
     </div>

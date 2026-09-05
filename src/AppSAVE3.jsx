@@ -560,15 +560,11 @@ function App() {
 
             {/* put in total power displays for the interval appear  */}
 
-
-
             </div>
 
-            
           </div>
           </div>
 
-          
           </>
         } />
 

@@ -4,11 +4,7 @@ import * as echarts from 'echarts';
 const powerColor = '#e34948';
 const powerName = 'Power on';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
-
-console.log(SUPABASE_URL)
-console.log(SUPABASE_KEY)
+import { fetchAllReadings, fetchRangedReadings } from './utils/DataBaseQuery.jsx';
 
 function getOnIntervals(powerData) {
   const intervals = [];
@@ -26,53 +22,6 @@ function getOnIntervals(powerData) {
     intervals.push([start, powerData[powerData.length - 1][0]]);
   }
   return intervals;
-}
-
-// Fetches every row from AVIP_Table, ordered by your timestamp column.
-// Adjust "your_timestamp_column_name" to match your actual column name.
-async function fetchAllReadings() {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/AVIP_Table?select=*&order=created_at.asc&limit=1000000`,
-    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
-  );
-  if (!res.ok) throw new Error(`Supabase fetch failed: ${res.status}`);
-  return res.json();
-}
-
-// Fetches only rows whose created_at falls within [start, end], inclusive.
-// start/end are expected to be date strings like "2026-07-05" (the shape
-// DateRangePicker produces via <input type="date">). Supabase's REST API
-// (PostgREST) supports gte./lte. filters directly as query params.
-async function fetchRangedReadings(start, end) {
-  // A bare date like "2026-07-05" is midnight UTC, which would exclude
-  // everything on the end date after 00:00. Push end to the end of that
-  // day so the range is inclusive of the whole end date.
-  const startIso = new Date(`${start}T00:00:00.000Z`).toISOString();
-  const endIso = new Date(`${end}T23:59:59.999Z`).toISOString();
-
-  console.log("start: ", startIso);
-  console.log("end: ", endIso);
-
-  const params = new URLSearchParams({
-    select: '*',
-    order: 'created_at.asc',
-    limit: '1000000',
-    'created_at': `gte.${startIso}`,
-  });
-  // URLSearchParams can't hold two values under the same key, so add
-  // the second created_at filter manually.
-  const url = `${SUPABASE_URL}/rest/v1/AVIP_Table?${params.toString()}&created_at=lte.${endIso}`;
-
-  const res = await fetch(url, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-  });
-  if (!res.ok) throw new Error(`Supabase fetch failed: ${res.status}`);
-
-  console.log("ALL ROWS");
-  // const data = await res.json();
-  // console.log(data);
-
-  return res.json();
 }
 
 // Reshapes Supabase rows into the same { [metricKey]: [[timestamp_ms, value], ...] }
@@ -183,7 +132,7 @@ export default function AvipHistoryChart({ metrics, drawRange }) {
 }
 
 // in the JSX, alongside your other toggles:
-<button onClick={refreshData}>Refresh Data</button>
+{/* <button onClick={refreshData}>Refresh Data</button> */}
 
   // init chart once
   useEffect(() => {
@@ -335,7 +284,7 @@ export default function AvipHistoryChart({ metrics, drawRange }) {
       {loading && <p style={{ fontSize: 13 }}>Loading history…</p>}
       {error && <p style={{ fontSize: 13, color: 'red' }}>Failed to load: {error}</p>}
 
-      <div className="box">
+      <div style={{ position: "absolute", top: "105px"}} className="box">
         <div ref={chartRef} style={{ width: '100%', height: 395 }} />
       </div>
     </div>

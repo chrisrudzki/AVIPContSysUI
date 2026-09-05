@@ -7,23 +7,38 @@ import "./App.css";
 //   actionLabel - label for the submit button (e.g. "generate data", "Delete")
 //   idPrefix    - unique prefix for input ids/htmlFor, needed since this
 //                 component can appear more than once on the same page
-//   onSubmit    - called with { start, end, allTime } when the button is clicked
+//   onSubmit    - called with { start, end, allTime } when the button is clicked.
+//                 start/end are combined "YYYY-MM-DDTHH:mm" local datetime
+//                 strings (empty if allTime is true).
 export default function DateRangePicker({
   title,
   actionLabel = "Submit",
   idPrefix = "drp",
   onSubmit,
 }) {
-  const [dateRange, setDateRange] = useState({ start: "", end: "" });
+  const [dateRange, setDateRange] = useState({
+    startDate: "",
+    startTime: "00:00",
+    endDate: "",
+    endTime: "23:59",
+  });
   const [allTime, setAllTime] = useState(false);
   const [error, setError] = useState("");
+
+  // Combine date + time fields into a single sortable "YYYY-MM-DDTHH:mm"
+  // string so comparisons (and the max/min cross-linking below) work
+  // the same way plain date strings did before.
+  const combine = (date, time) => (date ? `${date}T${time || "00:00"}` : "");
 
   const handleChange = (field) => (e) => {
     const value = e.target.value;
     const next = { ...dateRange, [field]: value };
 
-    if (next.start && next.end && next.start > next.end) {
-      setError("Start date must be before end date.");
+    const startCombined = combine(next.startDate, next.startTime);
+    const endCombined = combine(next.endDate, next.endTime);
+
+    if (startCombined && endCombined && startCombined > endCombined) {
+      setError("Start must be before end.");
     } else {
       setError("");
     }
@@ -36,22 +51,27 @@ export default function DateRangePicker({
     setAllTime(next);
     if (next) {
       setError("");
-      setDateRange({ start: "", end: "" });
+      setDateRange({ startDate: "", startTime: "00:00", endDate: "", endTime: "23:59" });
     }
   };
 
-  const hasCompleteRange = Boolean(dateRange.start && dateRange.end);
+  const startCombined = combine(dateRange.startDate, dateRange.startTime);
+  const endCombined = combine(dateRange.endDate, dateRange.endTime);
+
+  const hasCompleteRange = Boolean(dateRange.startDate && dateRange.endDate);
   const canSubmit = allTime || (hasCompleteRange && !error);
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    onSubmit?.({ start: dateRange.start, end: dateRange.end, allTime });
+    onSubmit?.({ start: startCombined, end: endCombined, allTime });
   };
 
   return (
     <div className="drp">
       <div className="drp-header">
-        <h2 className="drp-title">{title}</h2>
+        
+        <h2 className="drp-title">{title + '    (Victoria time)'}</h2>
+        
         <label className="drp-alltime">
           <input
             type="checkbox"
@@ -65,31 +85,53 @@ export default function DateRangePicker({
 
       <div className={`drp-fields ${allTime ? "drp-fields-disabled" : ""}`}>
         <div className="drp-field">
-          <label className="drp-label" htmlFor={`${idPrefix}-start`}>
+          <label className="drp-label" htmlFor={`${idPrefix}-start-date`}>
             Start date
           </label>
           <input
-            id={`${idPrefix}-start`}
+            id={`${idPrefix}-start-date`}
             type="date"
             className="drp-input"
-            value={dateRange.start}
-            max={dateRange.end || undefined}
-            onChange={handleChange("start")}
+            value={dateRange.startDate}
+            max={dateRange.endDate || undefined}
+            onChange={handleChange("startDate")}
+            disabled={allTime}
+          />
+          <label className="drp-label" htmlFor={`${idPrefix}-start-time`}>
+            Start time
+          </label>
+          <input
+            id={`${idPrefix}-start-time`}
+            type="time"
+            className="drp-input"
+            value={dateRange.startTime}
+            onChange={handleChange("startTime")}
             disabled={allTime}
           />
         </div>
 
         <div className="drp-field">
-          <label className="drp-label" htmlFor={`${idPrefix}-end`}>
+          <label className="drp-label" htmlFor={`${idPrefix}-end-date`}>
             End date
           </label>
           <input
-            id={`${idPrefix}-end`}
+            id={`${idPrefix}-end-date`}
             type="date"
             className="drp-input"
-            value={dateRange.end}
-            min={dateRange.start || undefined}
-            onChange={handleChange("end")}
+            value={dateRange.endDate}
+            min={dateRange.startDate || undefined}
+            onChange={handleChange("endDate")}
+            disabled={allTime}
+          />
+          <label className="drp-label" htmlFor={`${idPrefix}-end-time`}>
+            End time
+          </label>
+          <input
+            id={`${idPrefix}-end-time`}
+            type="time"
+            className="drp-input"
+            value={dateRange.endTime}
+            onChange={handleChange("endTime")}
             disabled={allTime}
           />
         </div>
