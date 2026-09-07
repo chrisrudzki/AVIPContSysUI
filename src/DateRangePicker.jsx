@@ -1,35 +1,27 @@
 import { useState } from "react";
 import "./App.css";
 
-// Reusable date-range control with an "All time" override.
-// Props:
-//   title       - heading text (e.g. "Graph Interval", "Delete Data")
-//   actionLabel - label for the submit button (e.g. "generate data", "Delete")
-//   idPrefix    - unique prefix for input ids/htmlFor, needed since this
-//                 component can appear more than once on the same page
-//   onSubmit    - called with { start, end, allTime } when the button is clicked.
-//                 start/end are combined "YYYY-MM-DDTHH:mm" local datetime
-//                 strings (empty if allTime is true).
+// A component for selecting a date range, with optional All Time selection
 export default function DateRangePicker({
   title,
   actionLabel = "Submit",
   idPrefix = "drp",
   onSubmit,
 }) {
+
   const [dateRange, setDateRange] = useState({
     startDate: "",
     startTime: "00:00",
     endDate: "",
     endTime: "23:59",
   });
+
   const [allTime, setAllTime] = useState(false);
   const [error, setError] = useState("");
 
-  // Combine date + time fields into a single sortable "YYYY-MM-DDTHH:mm"
-  // string so comparisons (and the max/min cross-linking below) work
-  // the same way plain date strings did before.
   const combine = (date, time) => (date ? `${date}T${time || "00:00"}` : "");
 
+  // change the value of the dateRange state when the user changes a field
   const handleChange = (field) => (e) => {
     const value = e.target.value;
     const next = { ...dateRange, [field]: value };

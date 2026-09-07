@@ -6,6 +6,7 @@ const powerName = 'Power on';
 
 import { fetchAllReadings, fetchRangedReadings } from './utils/DataBaseQuery.jsx';
 
+// get intervals of when power is on from history data
 function getOnIntervals(powerData) {
   const intervals = [];
   let start = null;
@@ -24,9 +25,7 @@ function getOnIntervals(powerData) {
   return intervals;
 }
 
-// Reshapes Supabase rows into the same { [metricKey]: [[timestamp_ms, value], ...] }
-// shape your live AvipChart already expects — reading values out of the
-// `data_point` jsonb column, keyed the same way as your MQTT payload.
+// Puts Database rows into the format { [metricKey]: [[timestamp_ms, value], ...] }
 function rowsToHistory(rows, metrics) {
   const history = {};
   metrics.forEach((metric) => {
@@ -34,17 +33,9 @@ function rowsToHistory(rows, metrics) {
   });
   history.power = [];
 
-  // console.log("history to here");
-  // print("created at: ", rows[2].created_at)
   rows.forEach((row) => {
-    // if (!/[+-]\d{2}:\d{2}$|Z$/.test(row.created_at)) {
-    //   console.warn('Missing timezone offset:', row.created_at);
-    // }
-
     console.log("created at: ", row.created_at);
     let ts = new Date(row.created_at).getTime();
-    // let ts = row.created_at
-    // ts = ts * 1000;
     const dp = row.data_point ?? {};
 
     metrics.forEach((metric) => {
@@ -54,11 +45,10 @@ function rowsToHistory(rows, metrics) {
     history.power.push([ts, (dp.pumpPower ?? 0) > 0 ? 1 : 0]);
   });
 
-  console.log("history! :", history);
-
   return history;
 }
 
+// Displays all Control System data from database (besides power consumption) in a line chart
 export default function AvipHistoryChart({ metrics, drawRange }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -70,6 +60,7 @@ export default function AvipHistoryChart({ metrics, drawRange }) {
 
   const historyRef = useRef({}); // holds fetched data for buildSeries to read
 
+  // update chart drawing
   function buildSeries(showPowerArea) {
     const history = historyRef.current;
     const onIntervals = getOnIntervals(history.power ?? []);
@@ -82,11 +73,11 @@ export default function AvipHistoryChart({ metrics, drawRange }) {
     return metrics.map((metric, i) => ({
       name: metric.name,
       type: 'line',
-      large: true,                  // ← enables the WebGL-backed rendering path
-      largeThreshold: 5000,         // ← only switches to "large" mode once a series exceeds this many points
-      progressive: 5000,            // ← renders in chunks of this size instead of all at once
-      progressiveThreshold: 10000,  // ← only uses progressive rendering above this point count
-      smooth: false,                // 
+      large: true,                 
+      largeThreshold: 5000,         
+      progressive: 5000,            
+      progressiveThreshold: 10000,  
+      smooth: false,                 
       symbol: 'none',
       lineStyle: { width: 2, color: metric.color },
       itemStyle: { color: metric.color },
@@ -100,41 +91,33 @@ export default function AvipHistoryChart({ metrics, drawRange }) {
     }));
   }
 
+  // check for new chart perameters in user input for update
   async function refreshData() {
-  setLoading(true);
-  setError(null);
+    setLoading(true);
+    setError(null);
   try {
-    // console.log("here 0");
-
     let rows;
+
+    // check if range has been spesified by the user
     if (drawRange.allTime == false){
-      console.log("start: ", drawRange.start, " end: ", drawRange.end);
       rows = await fetchRangedReadings(drawRange.start, drawRange.end);
-      console.log("got ranged rows");
+      // console.log("got ranged rows");
     }else{
-      // console.log("here2");
       rows = await fetchAllReadings();
     }
-
-
-    console.log("in here ", rows);
 
     historyRef.current = rowsToHistory(rows, metrics);
     chartInstance.current.setOption({ series: buildSeries(powerAreaOn) });
 
   } catch (err) {
-    // console.log("hero")
     setError(err.message);
+
   } finally {
     setLoading(false);
   }
-
 }
 
-// in the JSX, alongside your other toggles:
-{/* <button onClick={refreshData}>Refresh Data</button> */}
-
-  // init chart once
+  // initalize chart for the first time
   useEffect(() => {
     const chart = echarts.init(chartRef.current);
     chartInstance.current = chart;
@@ -169,10 +152,9 @@ export default function AvipHistoryChart({ metrics, drawRange }) {
       window.removeEventListener('resize', resize);
       chart.dispose();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // fetch once on mount HERE!!!
+  // get new data at the start
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -182,9 +164,6 @@ export default function AvipHistoryChart({ metrics, drawRange }) {
       .then((rows) => {
         if (cancelled) return;
         historyRef.current = rowsToHistory(rows, metrics);
-
-        // console.log(rows);
-        // console.log("Rows:", rows.length);
 
         if (chartInstance.current) {
           chartInstance.current.setOption({
@@ -200,9 +179,10 @@ export default function AvipHistoryChart({ metrics, drawRange }) {
       });
 
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+
+  // toggle zoom on chart
   function toggleZoom() {
     const next = !zoomEnabled;
     setZoomEnabled(next);
@@ -225,6 +205,8 @@ export default function AvipHistoryChart({ metrics, drawRange }) {
     }
   }
 
+
+  // toggle variable on chart
   function toggleSeries(index) {
     const next = [...seriesOn];
     next[index] = !next[index];
@@ -235,15 +217,16 @@ export default function AvipHistoryChart({ metrics, drawRange }) {
     });
   }
 
+  // toggle the power area on chart
   function togglePowerArea() {
     const next = !powerAreaOn;
     setPowerAreaOn(next);
     chartInstance.current.setOption({ series: buildSeries(next) });
   }
 
+  
   return (
     <div>
-
     <button onClick={refreshData}>Refresh Chart</button>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8, alignItems: 'center' }}>
         {metrics.map((metric, i) => (

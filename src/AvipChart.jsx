@@ -4,30 +4,24 @@ import * as echarts from 'echarts';
 const powerColor = '#e34948';
 const powerName = 'Power on';
 
-// `history` shape: { externalTemp, internalTemp, vipPressure, pumpPower, totalPower, power }
-// each is an array of [timestamp_ms, value] pairs, except `power` which is [timestamp_ms, 0|1]
-//
-// `metrics` is the list of series THIS chart instance should plot, e.g.:
-// [{ key: 'externalTemp', name: 'External Temp', color: '#2a78d6' }, ...]
-// `key` must match a field name in `history`.
+// Displays all live Control System data (besides power consumption) in a line chart
 export default function AvipChart({ history, metrics }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
   const [seriesOn, setSeriesOn] = useState(metrics.map(() => true));
   const [powerAreaOn, setPowerAreaOn] = useState(true);
   const [zoomEnabled, setZoomEnabled] = useState(true);
-  // null = "not manually zoomed, always show full range".
-  // once the user zooms/pans, this holds the absolute {startValue, endValue}
-  // (real timestamps) so the window stays put as new data streams in.
+  
+  // null shows full range
+  // once the user zooms this holds startValue and endValue}
   const zoomRef = useRef(null);
-  // mirrors zoomEnabled for use inside the 'datazoom' listener, which is
-  // registered once and would otherwise only ever see its initial value
   const zoomEnabledRef = useRef(true);
 
   useEffect(() => {
     zoomEnabledRef.current = zoomEnabled;
   }, [zoomEnabled]);
 
+  //get intervals of power on from the power data
   function getOnIntervals(powerData) {
   const intervals = [];
   let start = null;
@@ -46,6 +40,7 @@ export default function AvipChart({ history, metrics }) {
   return intervals;
 }
 
+  // create chart
   function buildSeries(showPowerArea) {
     const onIntervals = getOnIntervals(history.power);
     const markAreaData = onIntervals.map(([s, e]) => [{ xAxis: s }, { xAxis: e }]);
@@ -67,7 +62,7 @@ export default function AvipChart({ history, metrics }) {
     }));
   }
 
-  // init chart once
+  // create chart on mount 
   useEffect(() => {
     const chart = echarts.init(chartRef.current);
     chartInstance.current = chart;
@@ -92,12 +87,11 @@ export default function AvipChart({ history, metrics }) {
         { type: 'inside', start: 0, end: 100 },
         { start: 0, end: 100 }
       ],
+      //inital drawing of chart
       series: buildSeries(powerAreaOn)
     });
 
-    // Whenever the user drags/zooms (slider or inside-scroll), record the
-    // resulting window as absolute timestamps rather than trusting percent.
-    // Ignored while zoom is toggled off, since interaction is disabled then anyway.
+    // record the zoom window using absolute timestamps
     chart.on('datazoom', () => {
       if (!zoomEnabledRef.current) return;
       const opt = chart.getOption();
@@ -113,17 +107,16 @@ export default function AvipChart({ history, metrics }) {
       window.removeEventListener('resize', resize);
       chart.dispose();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   // update series data whenever new points arrive
   useEffect(() => {
     if (chartInstance.current) {
       const update = { series: buildSeries(powerAreaOn) };
-      // if zoom is on AND the user has manually zoomed, re-pin that exact
-      // window so it doesn't silently drift as the time range grows.
-      // if zoom is off, we deliberately skip this so the percent-based
-      // 0-100 window (set in toggleZoom/init) keeps showing everything.
+
+      // if zoom is on and the user has manually zoomed, pin that exact
+      // window to prevent resizing
       if (zoomEnabled && zoomRef.current) {
         update.dataZoom = [
           { type: 'inside', startValue: zoomRef.current.startValue, endValue: zoomRef.current.endValue },
@@ -132,7 +125,6 @@ export default function AvipChart({ history, metrics }) {
       }
       chartInstance.current.setOption(update);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [history]);
 
   function toggleZoom() {
@@ -151,8 +143,6 @@ export default function AvipChart({ history, metrics }) {
         ]
       });
     } else {
-      // lock to full range and disable interaction so it can't be
-      // dragged while off; the growing 0-100% window shows all data.
       chartInstance.current.setOption({
         dataZoom: [
           { type: 'inside', start: 0, end: 100, zoomOnMouseWheel: false, moveOnMouseWheel: false, moveOnMouseMove: false },
@@ -162,6 +152,7 @@ export default function AvipChart({ history, metrics }) {
     }
   }
 
+  // toggle variable on chart
   function toggleSeries(index) {
     const next = [...seriesOn];
     next[index] = !next[index];
@@ -172,6 +163,7 @@ export default function AvipChart({ history, metrics }) {
     });
   }
 
+  // toggle the power area on/off
   function togglePowerArea() {
     const next = !powerAreaOn;
     setPowerAreaOn(next);

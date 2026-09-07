@@ -1,13 +1,9 @@
-
-
 .boxes {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  /* justify-content: center; */
   align-items: center;
   padding-top: 175px;
-  /* height : 90%; */
 }
 
 .box {
@@ -40,9 +36,6 @@
   max-width: 400px;
   align-items: start;
   display: flex;
-
-  /* justify-content: center;
-  align-items: center; */
 } 
 
 .lower-box-2 {
@@ -55,9 +48,6 @@
   max-width: 400px;
   display: flex;
   flex-direction: column;
-
-  /* justify-content: center;
-  align-items: center; */
 } 
 
 .lower-box-3 {
@@ -71,9 +61,6 @@
   max-width: 400px;
   display: flex;
   flex-direction: column;
-
-  /* justify-content: center;
-  align-items: center; */
 } 
 
 h3{
@@ -95,8 +82,6 @@ h3{
   display: flex;
   flex-direction: column;
   gap: 1px;
-  /* justify-content: center;
-  align-items: center; */
   width: 100%;
   flex: 1;
   min-width: 0;
@@ -107,22 +92,19 @@ h3{
  
 
 .responsive-box-data {
-  flex: 1 1 20%;       /* grow: 0, shrink: 1, basis: 20% */
-  max-width: 15%;   /* stop growing past roughly a third of the row */
-  min-width: 325px;         /* lets flex items actually shrink below content size */
+  flex: 1 1 20%;    
+  max-width: 15%;   
+  min-width: 325px;        
   box-sizing: border-box;
 }
 
 .responsive-box-chart {
   position: relative;
-  flex: 1 1 25%;       /* grow: 0, shrink: 1, basis: 20% */
-  /* max-width: 40%;    */
-  width: 550px;         /* lets flex items actually shrink below content size */
-  min-width: 525px;         /* lets flex items actually shrink below content size */
+  flex: 1 1 25%;    
+  width: 550px;   
+  min-width: 525px; 
   box-sizing: border-box;
   height: 400px;
-  
-  /* overflow: hidden; */
 }
 
 @media (max-width: 1024px) {
@@ -138,12 +120,9 @@ h3{
   flex-wrap: nowrap;   
   width: 100%;
   height: 555px;
-/* 
-  align-self: stretch;  /* ← forces just this child to ignore parent's center and fill width * */
 }
 
 @media (max-width: 1350px) {
-
   .boxes {
     gap: 16px;
     padding-bottom: 5px;
@@ -151,9 +130,8 @@ h3{
 
   .box-row {
     flex-direction: column;
-    align-items: center;  /* center the stacked boxes horizontally */
+    align-items: center;
     height: 585px;
-    
     gap: 450px;           
   }
 
@@ -185,9 +163,6 @@ h3{
 
 
 .corner-btn-2 {
-  /* position: fixed;
-  top: 16px;
-  right: 16px; */
   background: rgba(170, 59, 255, 0);
   color: #000201;
   border: 1px solid #2d8a4e;
@@ -208,7 +183,6 @@ h3{
   justify-content: space-between;
   padding: 1px 2.5px;
   font-size: 14.5px;
-  /* font-weight: bold; */
 }
 
 .data-container-controls {
@@ -218,7 +192,6 @@ h3{
   padding: 1px 2.5px;
   font-size: 14.5px;
   width: 350px;
-  /* font-weight: bold; */
 }
 
 .data-value {
@@ -235,11 +208,11 @@ h3{
 
 .data-number {
   text-align: right;
-  flex: 1;             /* takes up remaining space, pushing unit to same spot */
+  flex: 1;
 }
 
 .data-unit {
-  width: 30px;         /* fixed width so units always start at same place */
+  width: 30px;
 }
 
 .deflate-input {
@@ -249,10 +222,7 @@ h3{
   border-radius: 4px;
   font-family: var(--mono);
   color: var(--text-h);
-  /* font-size: 10px; */
 }
-
-/* date range  */
 
 .drp {
   max-width: 28rem;

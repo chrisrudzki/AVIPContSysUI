@@ -6,7 +6,6 @@ import AvipPowerHistoryChart from './AvipPowerHistoryChart.jsx';
 import { Routes, Route, useNavigate } from 'react-router-dom'
 import { fetchAllReadings, fetchRangedReadings } from './utils/DataBaseQuery.jsx';
 
-
 import Sim from './pages/simulation.jsx'
 import mqtt from "mqtt";
 import AvipChart from './AvipChart.jsx'
@@ -16,39 +15,26 @@ import * as XLSX from 'xlsx';
 
 import './App.css'
 
+const MQTT_USERNAME = import.meta.env.VITE_MQTT_USERNAME;
+const MQTT_PASSWORD = import.meta.env.VITE_MQTT_PASSWORD;
+
 function App() {
-  // const [ex_Temp, setExTemp] = useState(0)
-  // const [in_Temp, setInTemp] = useState(0)
-  // const [pressure, setPressure] = useState(0)
-
-  // const [pressure, setPressure] = useState(0)
-
   const [right_Valve, setRightValve] = useState("OFF")
   const [left_Valve, setLeftValve] = useState("OFF")
   const [center_Valve, setCenterValve] = useState("OFF")
-  
   const [pump_Status, setPumpStatus] = useState("OFF")
-
   const [value, setDeflateValue] = useState(-1000)
   
   const navigate = useNavigate()
 
   const [rPiData, setRPiData] = useState(null)
-
   const [totalPower, setTotalPower] = useState(null)
-
   const [graphRangeGenerate, setGraphRangeGenerate] = useState({ start: '', end: '', allTime: true })
-
   const [isPumpOn, setIsPumpOn] = useState(false)
-
   const [pumpTimeoutDone, setPumpTimeoutDone] = useState(true)
 
   let client = useRef(null);
-  // const [graphRangePowerGenerate, setGraphRangePowerGenerate] = useState({ start: '', end: '', allTime: true })
-  // const [deleteRange, setDeleteRange] = useState(null)
 
-  // Rolling history of data points for the chart. Each array holds
-  // [timestamp_ms, value] pairs, capped at MAX_POINTS so it doesn't grow forever.
   const [history, setHistory] = useState({
     externalTemp: [],
     internalTemp: [],
@@ -69,11 +55,6 @@ function App() {
     new_pump_power_data: [] 
   })
 
-  // ------------------------------------------------------------------
-  // Simulation mode — lets you test the dashboard without a live Pi/MQTT feed
-  // ------------------------------------------------------------------
-  const [simulate, setSimulate] = useState(false)
-
   // Which metrics each chart box plots. `key` must match a field in `history`.
   const leftGraphMetrics = [
     { key: 'externalTemp', name: 'External Temp', color: '#2a78d6' },
@@ -88,21 +69,10 @@ function App() {
   { key: 'rPiPower', name: 'RPi Power', color: '#012300' },
   ]
 
-  const simStateRef = useRef({
-    externalTemp: 21,
-    internalTemp: 18,
-    vipPressure: 0.05,
-    pumpPower: 0,
-    rPiPower: 3,
-    pumpVoltage: 24,
-    rPiVoltage: 5,
-    pumpOn: true
-  })
-
   function flattenRows(rows) {
     return rows.map((row) => ({
       created_at: row.created_at,
-      ...row.data_point, // spreads externalTemp, pumpPower, etc. into top-level columns
+      ...row.data_point, 
     }));
   }
 
@@ -114,25 +84,18 @@ function App() {
       XLSX.writeFile(workbook, filename);
     }
 
-  // Shared handler: both the real MQTT message handler and the simulator
-  // call this so the rest of the app doesn't care where the data came from.
+  // takes Live Control System Data and packages for the Live Charts
   function applyPayload(payload) {
     setRPiData(payload);
 
     const now = payload.timestamp * 1000
-    const now2 = Date.now();
-
-    // console.log("GOT THE PAYLOAD TIME: ", now2)
-
-    // console.log("Payload time: ", payload.timestamp * 1000)
-
+    
     const total = (payload.pumpPower ?? 0) + (payload.rPiPower ?? 0);
     setTotalPower(total);
 
     const MAX_POINTS = 500;
     const push = (arr, val) => [...arr, [now, val]].slice(-MAX_POINTS);
-    // console.log("Updating history with payload:", payload, "Total power:", total);
-
+    
     console.log("PAYLOAD: ex temp", payload.externalTemp, "in temp", payload.internalTemp, "vip pressure", payload.vipPressure, "pump power", payload.pumpPower, "rPi power", payload.rPiPower, "total power", total, "pump voltage", payload.pumpVoltage, "rPi voltage", payload.rPiVoltage);
 
     setHistory((prev) => ({
@@ -147,7 +110,7 @@ function App() {
     }));
 
     console.log("new pump power data: ", payload.new_pump_power_data);
-    
+
     if (payload.new_pump_power_data == 1) {
       console.log("set power history");
       setPowerHistory((prev) => ({
@@ -159,68 +122,37 @@ function App() {
     
     }
 
-  // useEffect(() => {
-  //   // if (!simulate) return;
-
-  //   const interval = setInterval(() => {
-  //     const s = simStateRef.current;
-
-  //     // random walk each field a little, occasionally flip the pump on/off
-  //     s.externalTemp += (Math.random() - 0.5) * 0.3;
-  //     s.internalTemp += (Math.random() - 0.5) * 0.2;
-  //     s.vipPressure = Math.max(0, s.vipPressure + (Math.random() - 0.5) * 0.002);
-  //     if (Math.random() < 0.05) s.pumpOn = !s.pumpOn;
-  //     s.pumpPower = s.pumpOn ? Math.max(0, 40 + (Math.random() - 0.5) * 8) : 0;
-  //     s.rPiPower = Math.max(0, 3 + (Math.random() - 0.5) * 0.5);
-  //     s.pumpVoltage = s.pumpOn ? 24 + (Math.random() - 0.5) : 0;
-  //     s.rPiVoltage = 5 + (Math.random() - 0.5) * 0.1;
-
-  //     applyPayload({
-  //       externalTemp: Number(s.externalTemp.toFixed(2)),
-  //       internalTemp: Number(s.internalTemp.toFixed(2)),
-  //       vipPressure: Number(s.vipPressure.toFixed(4)),
-  //       pumpPower: Number(s.pumpPower.toFixed(1)),
-  //       rPiPower: Number(s.rPiPower.toFixed(2)),
-  //       pumpVoltage: Number(s.pumpVoltage.toFixed(2)),
-  //       rPiVoltage: Number(s.rPiVoltage.toFixed(2))
-  //     });
-  //   }, 1000); // one fake reading per second — change to match your real cadence
-
-  //   return () => clearInterval(interval);
-  // }, []);
-
+ 
+  // on start of program
   useEffect(() => {
     
-    // ws:// not mqtt:// — browsers need the WebSocket listener
+    // connect to the MQTT broker
     let mqttClient = mqtt.connect("wss://e17befc47e684572a7e116a22da1ad42.s1.eu.hivemq.cloud:8884/mqtt", {
-      username: "AVIPLab",
-      password: "AVIPCom445!",
+      username: MQTT_USERNAME,
+      password: MQTT_PASSWORD,
     });
 
     client.current = mqttClient;
 
     mqttClient.on("connect", () => {
-      // console.log("connected to broker");
       mqttClient.subscribe("RPi/payload", (err) => {
       if (err) console.error("subscribe error:", err);
       else console.log("subscribed successfully");
       });
     });
 
+    // when a message is received from the broker, update the live data 
     mqttClient.on("message", (topic, message) => {
       const payload = JSON.parse(message.toString());
       applyPayload(payload);
-      // console.log("Received message:", payload);
 
     });
 
     return () => mqttClient.end(); // clean up on unmount
     }, []);
 
-
-    //WORKING
+    // pump on/off button functionality, prevent rapid toggling
     function handlePumpToggle(isOn) {
-      // s
       if (isOn) {
         setIsPumpOn(true);
         console.log("Pump turned ON");
@@ -236,13 +168,7 @@ function App() {
         else console.log("Published ON");
         
     });
-        //set timer to disallow turning on for 5 seconds
-        // send a command to turn on the pump
-
-
-        //set timer to disallow turning off for 5 seconds
-        // send a command to turn on the pump
-
+       
       }else{
         setIsPumpOn(false);
         console.log("Pump turned OFF");
@@ -256,29 +182,22 @@ function App() {
           if (err) console.error("Publish failed:", err);
           else console.log("Published OFF");
         });
-        //set timer to disallow turning on for 5 seconds
+        
       }
 
     }
-
-    // if (!data) return <div>Waiting for data...</div>;
 
    return (
     <>
       
       <Routes>
-        {/* <button className="corner-btn" onClick={() => navigate('/simulation')}></button> */}
-
+        
         <Route path="/" element={
           <>
+          
+          {/* optional seperate tab */}
           {/* <button className="corner-btn" onClick={() => navigate('/simulation')}>simulation</button> */}
-          {/* <button
-            className="corner-btn"
-            style={{ right: "160px" }}
-            onClick={() => setSimulate((s) => !s)}
-          >
-            {simulate ? "Stop simulating" : "Simulate data"}
-          </button> */}
+          
 
           <div className="boxes">
 
@@ -421,8 +340,6 @@ function App() {
             <div className="data-container-controls">
           <p>Timed Pump</p>
             
-
-
               <div>
               
             <input className="deflate-input"
@@ -446,14 +363,11 @@ function App() {
                 idPrefix="graph-range"
                 onSubmit={(range) => {
                   setGraphRangeGenerate(range);
-                  // TODO: use range.start / range.end / range.allTime to
-                  // fetch or filter the history data shown in the charts below
                   console.log("RANGE: ", range)
                 }}
               />
 
               <button onClick={async () => {
-             
                 if (graphRangeGenerate.allTime == false){
                   console.log("start: ", graphRangeGenerate.start, " end: ", graphRangeGenerate.end);
                   const rows = await fetchRangedReadings(graphRangeGenerate.start, graphRangeGenerate.end);
@@ -485,27 +399,6 @@ function App() {
 
           </div>
 
-          {/* <div className="box-row">
-          <div className="lower-box-3">
-
-            <div className="lower-box-inner">
-
-              <DateRangePicker
-                title="Delete Data"
-                actionLabel="Delete"
-                idPrefix="delete-range"
-                onSubmit={(range) => {
-                  setDeleteRange(range);
-                  deleteDataRange(range);
-                  // TODO: call the delete endpoint with range.start / range.end / range.allTime
-                  console.log("Delete requested for range:", range);
-                }}
-              />
-
-            </div>
-          </div>
-
-          </div> */}
           </>
         } />
 

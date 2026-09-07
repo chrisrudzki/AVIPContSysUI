@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import * as echarts from 'echarts';
 
-
-// history arrays are index-aligned (each index = one incoming payload).
-// Pull raw values + timestamps straight out, no grouping/averaging, and keep
-// them paired as [timestamp_ms, value] so the x-axis can be type: 'time'.
+// put live history into a shape for the chart
 function extractSeries(history, metrics) {
   const seriesData = {};
   metrics.forEach((metric) => {
@@ -14,6 +11,7 @@ function extractSeries(history, metrics) {
   return { seriesData };
 }
 
+// Displays all live power comsumption Data in a Bar Chart from a certian time interval
 export default function AvipBarChart({ history, metrics }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -21,23 +19,21 @@ export default function AvipBarChart({ history, metrics }) {
   const [zoomEnabled, setZoomEnabled] = useState(true);
 
   // Tracks the user's manual zoom/pan window as absolute timestamps,
-  // so new incoming data doesn't reset the view back to 0-100%.
-  // null = "no manual zoom yet, show everything".
   const zoomRef = useRef(null);
-
   const zoomEnabledRef = useRef(true);
 
-  
-
+  // change when zooming into a section of the chart
   useEffect(() => {
     zoomEnabledRef.current = zoomEnabled;
   }, [zoomEnabled]);
+
 
   const { seriesData } = useMemo(
     () => extractSeries(history, metrics),
     [history, metrics]
   );
 
+  // draws chart
   function buildSeries() {
     return metrics.map((metric) => ({
       name: metric.name,
@@ -47,7 +43,7 @@ export default function AvipBarChart({ history, metrics }) {
     }));
   }
 
-  // init chart once
+  // create chart on mount
   useEffect(() => {
     const chart = echarts.init(chartRef.current);
     chartInstance.current = chart;
@@ -73,9 +69,7 @@ export default function AvipBarChart({ history, metrics }) {
     });
 
  
-
-    // Capture the user's zoom/pan whenever they drag the slider or
-    // scroll-zoom, so it can be re-applied after every data update below.
+    // Capture users zoom whenever they drag the slider
     chart.on('datazoom', () => {
       const opt = chart.getOption();
       const dz = opt.dataZoom && opt.dataZoom[0];
@@ -99,9 +93,7 @@ export default function AvipBarChart({ history, metrics }) {
       const update = {
         series: buildSeries()
       };
-
-      // Re-pin the exact same zoom window instead of letting it reset
-      // to 0-100% every time a new payload comes in.
+      // pin the same zoom window instead of resetting
       if (zoomRef.current) {
         update.dataZoom = [
           { type: 'inside', startValue: zoomRef.current.startValue, endValue: zoomRef.current.endValue },
@@ -111,7 +103,6 @@ export default function AvipBarChart({ history, metrics }) {
 
       chartInstance.current.setOption(update);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seriesData]);
 
   function toggleSeries(index) {
@@ -141,7 +132,6 @@ export default function AvipBarChart({ history, metrics }) {
       });
     } else {
       // lock to full range and disable interaction so it can't be
-      // dragged while off; the growing 0-100% window shows all data.
       chartInstance.current.setOption({
         dataZoom: [
           { type: 'inside', start: 0, end: 100, zoomOnMouseWheel: false, moveOnMouseWheel: false, moveOnMouseMove: false },

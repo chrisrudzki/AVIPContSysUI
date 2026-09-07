@@ -1,20 +1,15 @@
-import * as XLSX from 'xlsx';
 import * as echarts from 'echarts';
 
 import { useEffect, useRef, useState } from 'react';
 import { fetchAllReadings, fetchRangedReadings } from './utils/DataBaseQuery.jsx';
 
-// Reshapes Supabase rows into { seriesData: { [metricKey]: [[timestamp_ms, value], ...] } }
-// one bar per row, no bucketing, timestamp kept as an actual Date-parseable value
-// so the x-axis can be type: 'time' instead of a category axis of label strings.
+// Puts Database rows into the format { [metricKey]: [[timestamp_ms, value], ...] }
 function rowsToBarData(rows, metrics) {
   const seriesData = {};
 
-  // Only sum metrics that aren't "totalPower" itself, to avoid double-counting
+  // sums all varibles that are not totalPower
   const summableMetrics = metrics.filter((m) => m.key !== 'totalPower');
 
-  // Compute each row's total power up front, then drop rows where it's 0
-  // so a zero-power reading doesn't show as an empty/zero-height bar.
   const rowsWithTotal = rows.map((row) => {
     const dataPoint = row.data_point ?? {};
     const total = summableMetrics.reduce(
@@ -26,6 +21,7 @@ function rowsToBarData(rows, metrics) {
 
   const filteredRows = rowsWithTotal.filter(({ total }) => total !== 0);
 
+  // put all varibles into the seriesData object for the chart to use
   metrics.forEach((metric) => {
     if (metric.key === 'totalPower') {
       seriesData[metric.key] = filteredRows.map(({ row, total }) => [
@@ -43,6 +39,7 @@ function rowsToBarData(rows, metrics) {
   return { seriesData };
 }
 
+// Displays all Control System power data from the database in a bar chart
 export default function AvipPowerBarChart({ metrics, drawRange, deleteRange }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -54,6 +51,7 @@ export default function AvipPowerBarChart({ metrics, drawRange, deleteRange }) {
   const dataRef = useRef({ seriesData: {} });
   const zoomRef = useRef(null);
 
+  // update chart drawing
   function buildSeries() {
     const { seriesData } = dataRef.current;
     return metrics.map((metric) => ({
@@ -64,9 +62,11 @@ export default function AvipPowerBarChart({ metrics, drawRange, deleteRange }) {
     }));
   }
 
+  // check for new chart parameters in user input for update
   async function fetchAndRender() {
     setLoading(true);
     setError(null);
+
     try {
       let rows;
       if (drawRange.allTime == false){
@@ -91,7 +91,7 @@ export default function AvipPowerBarChart({ metrics, drawRange, deleteRange }) {
     }
   }
 
-  // init chart once
+  // initalize chart for the first time
   useEffect(() => {
     const chart = echarts.init(chartRef.current);
     chartInstance.current = chart;
@@ -131,15 +131,17 @@ export default function AvipPowerBarChart({ metrics, drawRange, deleteRange }) {
       window.removeEventListener('resize', resize);
       chart.dispose();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, []);
 
-  // fetch once on mount
+  // draw chart for first time
   useEffect(() => {
     fetchAndRender();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, []);
 
+
+  //toggle zoom on and off for the chart
   function toggleZoom() {
     const next = !zoomEnabled;
     setZoomEnabled(next);
@@ -163,7 +165,8 @@ export default function AvipPowerBarChart({ metrics, drawRange, deleteRange }) {
       });
     }
   }
-
+  
+  // toggle a specific series on or off in the chart 
   function toggleSeries(index) {
     const next = [...seriesOn];
     next[index] = !next[index];
